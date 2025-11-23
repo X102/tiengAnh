@@ -3,799 +3,1386 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Đọc tiếng Anh</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Học tiếng Anh Dichi v12</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Mammoth.js for reading .docx files -->
-    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f0f2f5;
+        html { scroll-behavior: smooth; }
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; color: #333; min-height: 100vh; }
+
+        /* Z-Index Strategy */
+        #settings-sidebar { transition: transform 0.3s ease-in-out; z-index: 3000; }
+        .sidebar-overlay { background-color: rgba(0, 0, 0, 0.5); z-index: 2999; }
+        #open-sidebar-btn { z-index: 2900; }
+
+        .container { background-color: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); padding: 1.5rem; width: 100%; max-width: 900px; margin: 20px auto; overflow: hidden; position: relative; z-index: 1; }
+
+        /* Content Box */
+        .text-content {
+            white-space: pre-wrap; word-wrap: break-word; line-height: 2.2; margin-top: 1rem; padding: 1rem;
+            background-color: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;
+            min-height: 150px; max-height: 60vh; overflow-y: auto; font-size: 1.15rem;
         }
-        .container {
-            max-width: 900px;
-        }
-        textarea {
-            resize: vertical;
-            min-height: 150px;
-        }
-        .loading-spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            border-left-color: #4f46e5;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .modal {
-            transition: opacity 0.3s ease;
-        }
-        .modal-content {
-            transition: transform 0.3s ease;
-        }
-        .custom-file-upload {
-            border: 2px solid #4f46e5;
-            display: inline-block;
-            padding: 8px 16px;
-            cursor: pointer;
-            background-color: #f0f2f5;
-            color: #4f46e5;
-            border-radius: 0.375rem;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-        .custom-file-upload:hover {
-            background-color: #e0e7ff;
-        }
-        input[type="file"] {
-            display: none;
-        }
-        .prose {
-            max-width: none;
-        }
-        .section-content {
-            transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out;
-            overflow: hidden;
-        }
-        /* Styles for IPA on top of words */
-        .word-with-ipa {
-            display: inline-flex;
-            flex-direction: column;
-            align-items: center;
-            margin: 0 1px 12px;
-            vertical-align: bottom;
-            text-align: center;
-        }
-        .ipa-text-above {
-            font-size: 0.75rem; /* 12px */
-            color: #ef4444; /* red-500 */
-            line-height: 1;
-            display: block;
-            min-height: 1em; /* Prevent layout shift */
-        }
-        .original-word-below {
-            font-size: 1.125rem; /* 18px */
-            line-height: 1.25;
-            cursor: pointer;
-        }
-        .original-word-below:hover {
-            background-color: #e0e7ff; /* indigo-100 */
-            border-radius: 3px;
-        }
-        /* Style for offline lookup */
-         .clickable-word-offline {
-             cursor: pointer;
-        }
-        .clickable-word-offline:hover {
-            background-color: #e0e7ff; /* indigo-100 */
-            border-radius: 3px;
-        }
-        #selectionPopup {
-            position: absolute;
-            z-index: 1000;
-            background-color: #1f2937; /* gray-800 */
-            color: white;
-            border-radius: 0.5rem;
-            padding: 0.5rem;
-            display: none;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: opacity 0.1s ease-in-out;
-        }
-        #selectionPopup button, #selectionPopup a {
-            background: none;
-            border: none;
-            color: white;
-            padding: 0.5rem;
-            border-radius: 0.25rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            white-space: nowrap;
-        }
-        #selectionPopup button:hover, #selectionPopup a:hover {
-            background-color: #374151; /* gray-700 */
-        }
+
+        /* Thẻ Ruby để hiển thị IPA/Phonetic phía trên từ */
+        .word-clickable, .segmented-word ruby { cursor: pointer; padding: 2px; border-radius: 4px; transition: background-color 0.2s ease; display: inline-flex; flex-direction: column-reverse; align-items: center; line-height: 1.2; }
+        .word-clickable:hover, .segmented-word:hover { background-color: #e0e7ff; }
+        .segmented-word { border: 1px solid #d1d5db; margin: 2px; }
+/* CHỈNH SỬA: Viền mờ hơn cho cụm từ */
+    .segmented-word { 
+        border: 1px solid #efeeee; 
+        margin: 2px;
+        line-height: 1.4; /* Tăng khoảng cách dòng */
+    }
+    
+    /* CHỈNH SỬA: IPA to hơn, đậm hơn, có màu */
+    .segmented-word rt {
+        font-size: 0.9rem; 
+        font-weight: 600; 
+        color: #dc2626; /* Màu đỏ */
+    }
+        /* Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.0); z-index: 3100; display: none; }
+        .modal-content { background-color: #fefefe; padding: 15px; border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); position: absolute; max-width: 280px; z-index: 3200; border: 1px solid #e5e7eb; animation: fadeIn 0.2s ease-out; cursor: grab; position: relative; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+        /* Buttons */
+        .button-base { padding: 8px 16px; border-radius: 8px; transition: background-color 0.2s ease, transform 0.1s ease; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); font-size: 0.875rem; font-weight: 500; cursor: pointer; }
+        .button-base:disabled { opacity: 0.5; cursor: not-allowed; }
+        .button-base:hover:not(:disabled) { transform: translateY(-1px); }
+        .button-base:active:not(:disabled) { transform: translateY(0); }
+        .button-primary { background-color: #4f46e5; color: white; }
+        .button-primary:hover:not(:disabled) { background-color: #4338ca; }
+        .button-secondary { background-color: #6b7280; color: white; }
+        .button-secondary:hover:not(:disabled) { background-color: #4b5563; }
+        .button-danger { background-color: #dc2626; color: white; }
+        .button-danger:hover:not(:disabled) { background-color: #b91c1c; }
+
+        /* Links */
+        a.link-button { display: block; background-color: #eff6ff; color: #1d4ed8; padding: 8px 12px; border-radius: 6px; margin-bottom: 8px; text-align: center; text-decoration: none; transition: background-color 0.2s ease, color 0.2s ease; font-size: 0.9rem; }
+        a.link-button:hover { background-color: #dbeafe; color: #1e40af; }
+        #reference-section a { color: #2563eb; text-decoration: underline; cursor: pointer; position: relative; z-index: 10; }
+        #reference-section a:hover { color: #1e40af; }
+        #reference-section ul { list-style-type: disc; padding-left: 25px; }
+        #reference-section li { margin-bottom: 0.5rem; }
+
+        .loading-spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 10px auto; display: none; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px; }
+        .section-header h3 { font-size: 1.25rem; font-weight: 600; color: #333; margin: 0; }
+        .content-section { background-color: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); padding: 20px; margin-top: 20px; border: 1px solid #e5e7eb; position: relative; }
+
+        .text-selection-popup { max-width: 320px; padding: 10px; font-size: 0.85rem; box-shadow: 0 2px 8px rgba(0,0,0,0.15); border: 1px solid #ccc; background-color: #fff; cursor: grab; position: absolute; z-index: 3300; }
+        .text-selection-popup .button-secondary, .text-selection-popup .button-primary { padding: 6px 10px; font-size: 0.8rem; width: 100%; }
+        .close-button { position: absolute; top: 4px; right: 8px; font-size: 1.5rem; font-weight: bold; color: #9ca3af; cursor: pointer; line-height: 1; padding: 2px; }
+        .close-button:hover { color: #374151; }
+
+        .tts-controls { border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; background-color: #f9fafb; }
+        #tts-progress-container { width: 100%; background-color: #e5e7eb; border-radius: 9999px; cursor: pointer; height: 10px; }
+        #tts-progress-bar { height: 100%; background-color: #4f46e5; border-radius: 9999px; width: 0%; transition: width 0.1s linear; }
+        .resizable-media { resize: vertical; overflow: hidden; min-height: 150px; height: auto; background: #000; border-radius: 8px; display: flex; align-items: center; justify-content: center; position: relative; }
+        .resizable-media video { width: 100%; height: 100%; object-fit: contain; }
+
+        .task-progress-wrapper { width: 100%; margin-top: 8px; display: none; }
+        .task-progress-bar-bg { width: 100%; background-color: #e5e7eb; border-radius: 999px; height: 6px; overflow: hidden; }
+        .task-progress-bar-fill { height: 100%; background-color: #10b981; width: 0%; transition: width 0.3s ease; }
+        .task-status-text { font-size: 0.75rem; color: #6b7280; margin-top: 4px; display: flex; justify-content: space-between; }
+        .task-controls { display: flex; gap: 5px; align-items: center; }
+
+        .menu-link { display: block; padding: 8px 12px; color: #4b5563; font-weight: 500; border-radius: 6px; transition: background 0.2s; cursor: pointer; text-decoration: none; }
+        .menu-link:hover { background-color: #f3f4f6; color: #4f46e5; }
     </style>
 </head>
-<body class="flex items-center justify-center min-h-screen p-2 sm:p-4">
-    <div class="container bg-white p-4 sm:p-6 rounded-lg shadow-xl w-full">
-        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Học tiếng Anh cùng AI</h1>
+<body>
+    <div id="sidebar-overlay" class="sidebar-overlay fixed inset-0 hidden"></div>
 
-        <!-- Input Section -->
-        <div class="mb-4">
-            <label for="englishInput" class="block text-gray-700 text-sm font-medium mb-2">Nhập văn bản tiếng Anh hoặc tải file .docx:</label>
-            <textarea id="englishInput"
-                      class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200"
-                      placeholder="Nhập văn bản vào đây..."
-                      rows="6"></textarea>
-            <div class="flex justify-between items-center mt-2 text-sm text-gray-500">
-                <span id="textCounter">0 từ / 0 ký tự</span>
-                <div>
-                    <label for="file-upload" class="custom-file-upload text-xs">
-                        Tải lên .docx
-                    </label>
-                    <input id="file-upload" type="file" accept=".docx"/>
-                    <span id="fileName" class="ml-2"></span>
+    <div id="settings-sidebar" class="fixed top-0 left-0 h-full w-80 sm:w-96 bg-white shadow-2xl transform -translate-x-full overflow-y-auto flex flex-col">
+        <div class="p-6 flex-grow">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-800">Menu & Cài đặt</h2>
+                <button id="close-sidebar" class="text-gray-500 hover:text-gray-800"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+
+            <div class="mb-6 border-b pb-4">
+                <h3 class="font-semibold text-gray-700 mb-3 text-sm uppercase tracking-wider">Mục lục</h3>
+                <nav class="space-y-1">
+                    <a href="#input-section" class="menu-link">📥 Nhập liệu & Tải file</a>
+                    <a href="#media-player-section" class="menu-link">🎬 Trình phát Media</a>
+                    <a href="#tts-section-wrapper" class="menu-link">🔊 Đọc văn bản (TTS)</a>
+                    <a href="#main-text-section" class="menu-link">📄 Văn bản gốc</a>
+                    <a href="#pinyin-text-section" class="menu-link">🗣️ Phát âm/IPA (AI)</a>
+                    <a href="#segmented-text-section" class="menu-link">✂️ Tách từ (AI)</a>
+                    <a href="#full-translation-section" class="menu-link">🇻🇳 Bản dịch (AI)</a>
+                    <a href="#explanation-section" class="menu-link">🎓 Giải thích chi tiết (AI)</a>
+                    <a href="#ai-tools-section" class="menu-link">🤖 Công cụ từ vựng AI</a>
+                </nav>
+            </div>
+
+            <div class="mb-6 border-b pb-4">
+                <h3 class="font-semibold text-gray-700 mb-3 text-sm uppercase tracking-wider">Cấu hình API</h3>
+                <div class="mb-3">
+                    <label class="block mb-1 text-sm font-medium text-gray-700">Nhà cung cấp:</label>
+                    <select id="ai-provider-select" class="w-full p-2 border border-gray-300 rounded-md shadow-sm text-sm">
+                        <option value="gemini">Google Gemini (Free)</option>
+                        <option value="deepseek">DeepSeek (Paid)</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="block mb-1 text-sm font-medium text-gray-700">API Key:</label>
+                    <input type="password" id="api-key-input" placeholder="Nhập API Key..." class="w-full p-2 border border-gray-300 rounded-md shadow-sm text-sm mb-2">
+                    <button id="save-api-key-button" class="button-base button-primary w-full">Lưu API Key</button>
+                </div>
+                <p id="api-key-guide" class="text-xs text-gray-500 mb-1"></p>
+                <p id="api-key-status" class="text-sm text-green-600 font-medium h-5"></p>
+                <div class="mt-2 grid grid-cols-2 gap-2">
+                    <div><label class="block mb-1 text-sm font-medium text-gray-700">Độ trễ (s):</label><input type="number" id="delay-input" value="5" min="0" step="0.5" class="w-full p-2 border border-gray-300 rounded-md shadow-sm text-sm"></div>
+                    <div><label class="block mb-1 text-sm font-medium text-gray-700">Chunk Size:</label><input type="number" id="chunk-size-input" value="100" min="10" max="1000" step="10" class="w-full p-2 border border-gray-300 rounded-md shadow-sm text-sm"></div>
                 </div>
             </div>
-        </div>
 
-        <!-- Collapsible API Key Input -->
-        <div class="mb-6 border border-gray-200 rounded-md">
-            <button id="toggleApiSection" class="w-full flex justify-between items-center p-3 bg-gray-50 hover:bg-gray-100">
-                <span class="font-medium text-gray-700">Cấu hình Khóa API Gemini</span>
-                <svg id="apiChevron" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform transform" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                </svg>
-            </button>
-            <div id="apiSectionContent" class="p-4 hidden">
-                <div class="relative">
-                    <input type="password" id="apiKeyInput"
-                           class="w-full p-3 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                           placeholder="Nhập khóa API của bạn vào đây...">
-                    <button id="toggleApiKeyVisibility" type="button" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500">
-                        <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.022 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" /></svg>
-                        <svg id="eyeOffIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" clip-rule="evenodd" /><path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A10.059 10.059 0 01.458 10c1.274 4.057 5.022 7 9.542 7 1.126 0 2.207-.245 3.232-.697z" /></svg>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Feature Buttons -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-            <button data-feature="offline-lookup" class="feature-button bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700">Tra từ (Offline)</button>
-            <button data-feature="ipa" class="feature-button bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700">Phiên âm (AI)</button>
-            <button data-feature="translate" class="feature-button bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700">Dịch (AI)</button>
-            <button data-feature="grammar" class="feature-button bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700">Ngữ pháp (AI)</button>
-        </div>
-        
-        <div id="globalErrorMessage" class="text-red-600 mb-4 hidden text-center"></div>
-
-        <!-- Output Sections -->
-        <div id="output-sections" class="space-y-4">
-            <!-- Read Aloud Section -->
-            <div class="border border-gray-200 rounded-md">
-                <div class="w-full flex justify-between items-center p-3 bg-gray-50">
-                    <h2 class="text-lg font-semibold text-gray-800">Đọc toàn bộ văn bản</h2>
-                </div>
-                <div class="p-4 space-y-4">
-                     <div class="flex flex-col sm:flex-row flex-wrap items-center justify-between gap-4">
-                        <div class="flex items-center gap-2">
-                             <button id="mainPlayPauseButton" class="bg-green-600 text-white p-2 rounded-md hover:bg-green-700 flex items-center justify-center" title="Phát/Tạm dừng">
-                                <svg id="playIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" /></svg>
-                                <svg id="pauseIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
-                            </button>
-                             <button id="mainStopButton" class="bg-red-600 text-white p-2 rounded-md hover:bg-red-700 flex items-center justify-center" title="Dừng hẳn">
-                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1zm4 0a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
-                            </button>
-                        </div>
-                        <div class="flex items-center gap-2 w-full sm:w-auto">
-                            <label for="mainVoiceSelect" class="text-sm font-medium">Giọng đọc:</label>
-                            <select id="mainVoiceSelect" class="p-2 border border-gray-300 rounded-md w-full flex-1"></select>
-                        </div>
-                        <div class="flex items-center gap-2 w-full sm:w-auto">
-                            <label for="mainRateSlider" class="text-sm font-medium">Tốc độ:</label>
-                            <input type="range" id="mainRateSlider" min="0.5" max="2" value="1" step="0.1" class="w-full flex-1">
-                            <span id="mainRateValue" class="text-sm font-medium">1.0x</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <!-- Dynamic Output Sections will be inserted here -->
-        </div>
-        
-        <!-- Ask AI Section -->
-        <div class="mt-8 border border-gray-200 rounded-md">
-            <div class="w-full flex justify-between items-center p-3 bg-gray-50">
-                <h2 class="text-lg font-semibold text-gray-800">Hỏi AI về văn bản</h2>
-            </div>
-            <div class="p-4 space-y-4">
-                <textarea id="aiQuestionInput" class="w-full p-3 border border-gray-300 rounded-md" placeholder="Đặt câu hỏi về nội dung văn bản ở trên..." rows="2"></textarea>
-                <button id="askAIButton" class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700">Gửi câu hỏi</button>
-                <div id="aiAnswerContainer">
-                    <!-- AI Answer will be rendered here, inside a dynamic section -->
-                </div>
-            </div>
-        </div>
-        
-        <!-- Reference Links Section -->
-        <div class="mt-8 border border-gray-200 rounded-md">
-            <div class="w-full p-3 bg-gray-50">
-                <h2 class="text-lg font-semibold text-gray-800">Tài liệu học tiếng Anh tham khảo</h2>
-            </div>
-            <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-blue-600">
-                <a href="https://tophonetics.com/" target="_blank" class="hover:underline">toPhonetics</a>
-                <a href="https://www.bbc.co.uk/learningenglish" target="_blank" class="hover:underline">BBC Learning English - Tin tức & bài học</a>
-                <a href="https://dictionary.cambridge.org/" target="_blank" class="hover:underline">Cambridge Dictionary - Từ điển Anh-Anh, Anh-Việt</a>
-                <a href="https://www.ted.com/" target="_blank" class="hover:underline">TED Talks - Luyện nghe qua các bài diễn thuyết</a>
-                <a href="https://www.grammarly.com/blog/" target="_blank" class="hover:underline">Grammarly Blog - Mẹo ngữ pháp</a>
-                <a href="https://youglish.com/" target="_blank" class="hover:underline">YouGlish - Luyện phát âm qua video Youtube</a>
-                <a href="https://vtudien.com/" target="_blank" class="hover:underline">Việt Từ Điển - Đa ngôn ngữ</a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Selection Popup -->
-    <div id="selectionPopup" class="flex flex-wrap items-center gap-2">
-        <button id="popupPronounce" title="Phát âm"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217z" clip-rule="evenodd" /></svg></button>
-        <button id="popupCopy" title="Sao chép"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" /><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" /></svg></button>
-        <button id="popupTranslateAI" title="Dịch bằng AI">AI</button>
-        <button id="popupIPA" title="Phiên âm">IPA</button>
-        <a id="popupVtudien" href="#" target="_blank" title="Tra trên Vtudien">V</a>
-        <a id="popupCambridge" href="#" target="_blank" title="Tra trên Cambridge">C</a>
-        <a id="popupYouglish" href="#" target="_blank" title="Tra trên Youglish">Y</a>
-        <a id="popupGoogle" href="#" target="_blank" title="Dịch với Google">G</a>
-    </div>
-
-    <!-- Dictionary Popup Modal -->
-    <div id="dictionaryModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
-        <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-lg p-6 transform scale-95 max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center border-b pb-3 mb-4 flex-shrink-0">
-                <h3 class="text-2xl font-bold text-gray-800" id="modalWord"></h3>
-                <button id="closeModalButton" class="text-gray-500 hover:text-gray-800 text-3xl leading-none">&times;</button>
-            </div>
-            <div class="overflow-y-auto pr-2 space-y-4">
+            <div>
+                <div class="flex justify-between items-center mb-3"><h3 class="font-semibold text-gray-700 text-sm uppercase tracking-wider">Prompt Tùy chỉnh</h3><button id="reset-prompts-btn" class="text-xs text-red-500 underline">Reset</button></div>
                 <div class="space-y-3">
-                    <div class="flex flex-wrap items-center gap-4">
-                        <button id="modalSpeakButton" class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 flex items-center justify-center transition">
-                            <span id="modalSpeakButtonText">Phát âm</span>
-                        </button>
-                        <div class="flex items-center gap-2">
-                            <input type="range" id="modalRateSlider" min="0.5" max="2" value="1" step="0.1" class="w-24">
-                            <span id="modalRateValue" class="text-sm font-medium">1.0x</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center">
-                        <input type="checkbox" id="autoPronounceCheckbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
-                        <label for="autoPronounceCheckbox" class="ml-2 block text-sm text-gray-900">Tự động phát âm khi chọn từ</label>
-                    </div>
+                    <div><label class="text-xs font-medium text-gray-600">Phát âm/IPA:</label><textarea id="prompt-pinyin" rows="3" class="w-full p-2 border text-xs bg-gray-50 rounded"></textarea></div>
+                    <div><label class="text-xs font-medium text-gray-600">Tách từ:</label><textarea id="prompt-segment" rows="3" class="w-full p-2 border text-xs bg-gray-50 rounded"></textarea></div>
+                    <div><label class="text-xs font-medium text-gray-600">Giải thích:</label><textarea id="prompt-explain" rows="3" class="w-full p-2 border text-xs bg-gray-50 rounded"></textarea></div>
+                    <div><label class="text-xs font-medium text-gray-600">Dịch:</label><textarea id="prompt-translate" rows="3" class="w-full p-2 border text-xs bg-gray-50 rounded"></textarea></div>
                 </div>
-                <div id="modalDefinitionContainer" class="p-3 bg-gray-100 rounded-md">
-                     <div id="modalDefinitionLoading" class="loading-spinner mx-auto"></div>
-                     <p class="font-semibold text-gray-700">IPA: <span id="modalIpa" class="font-normal"></span></p>
-                     <p class="font-semibold text-gray-700">Nghĩa: <span id="modalMeaning" class="font-normal"></span></p>
-                </div>
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-center">
-                    <button id="modalCopyButton" class="p-2 bg-gray-200 hover:bg-gray-300 rounded-md transition">Sao chép</button>
-                    <a id="vtudienLink" href="#" target="_blank" class="p-2 bg-gray-200 hover:bg-gray-300 rounded-md transition">Tra Vtudien</a>
-                    <a id="youglishLink" href="#" target="_blank" class="p-2 bg-gray-200 hover:bg-gray-300 rounded-md transition">Tra Youglish</a>
-                    <a id="cambridgeLink" href="#" target="_blank" class="p-2 bg-gray-200 hover:bg-gray-300 rounded-md transition">Tra Cambridge</a>
-                    <button id="generateSentenceButton" class="p-2 bg-blue-200 hover:bg-blue-300 rounded-md transition">Tạo câu</button>
-                    <button id="generateWordsButton" class="p-2 bg-blue-200 hover:bg-blue-300 rounded-md transition">Từ liên quan</button>
-                </div>
-                <div id="modalDynamicContent" class="mt-4 space-y-4"></div>
             </div>
         </div>
     </div>
 
-    <script type="module">
-        // --- DOM ELEMENT MAPPING ---
-        const DOMElements = {
-            englishInput: document.getElementById('englishInput'),
-            apiKeyInput: document.getElementById('apiKeyInput'),
-            globalErrorMessage: document.getElementById('globalErrorMessage'),
-            outputSections: document.getElementById('output-sections'),
-            featureButtons: document.querySelectorAll('.feature-button'),
-            selectionPopup: document.getElementById('selectionPopup'),
-            popupPronounce: document.getElementById('popupPronounce'),
-            popupCopy: document.getElementById('popupCopy'),
-            popupTranslateAI: document.getElementById('popupTranslateAI'),
-            popupIPA: document.getElementById('popupIPA'),
-            popupVtudien: document.getElementById('popupVtudien'),
-            popupCambridge: document.getElementById('popupCambridge'),
-            popupYouglish: document.getElementById('popupYouglish'),
-            popupGoogle: document.getElementById('popupGoogle'),
-            fileUpload: document.getElementById('file-upload'),
-            fileNameSpan: document.getElementById('fileName'),
-            toggleApiKeyVisibility: document.getElementById('toggleApiKeyVisibility'),
-            eyeIcon: document.getElementById('eyeIcon'),
-            eyeOffIcon: document.getElementById('eyeOffIcon'),
-            toggleApiSection: document.getElementById('toggleApiSection'),
-            apiSectionContent: document.getElementById('apiSectionContent'),
-            apiChevron: document.getElementById('apiChevron'),
-            textCounter: document.getElementById('textCounter'),
-            mainPlayPauseButton: document.getElementById('mainPlayPauseButton'),
-            playIcon: document.getElementById('playIcon'),
-            pauseIcon: document.getElementById('pauseIcon'),
-            mainStopButton: document.getElementById('mainStopButton'),
-            mainVoiceSelect: document.getElementById('mainVoiceSelect'),
-            mainRateSlider: document.getElementById('mainRateSlider'),
-            mainRateValue: document.getElementById('mainRateValue'),
-            askAIButton: document.getElementById('askAIButton'),
-            aiQuestionInput: document.getElementById('aiQuestionInput'),
-            aiAnswerContainer: document.getElementById('aiAnswerContainer'),
-            dictionaryModal: document.getElementById('dictionaryModal'),
-            closeModalButton: document.getElementById('closeModalButton'),
-            modalWord: document.getElementById('modalWord'),
-            modalSpeakButton: document.getElementById('modalSpeakButton'),
-            modalRateSlider: document.getElementById('modalRateSlider'),
-            modalRateValue: document.getElementById('modalRateValue'),
-            autoPronounceCheckbox: document.getElementById('autoPronounceCheckbox'),
-            modalDefinitionContainer: document.getElementById('modalDefinitionContainer'),
-            modalDefinitionLoading: document.getElementById('modalDefinitionLoading'),
-            modalIpa: document.getElementById('modalIpa'),
-            modalMeaning: document.getElementById('modalMeaning'),
-            modalCopyButton: document.getElementById('modalCopyButton'),
-            vtudienLink: document.getElementById('vtudienLink'),
-            youglishLink: document.getElementById('youglishLink'),
-            cambridgeLink: document.getElementById('cambridgeLink'),
-            generateSentenceButton: document.getElementById('generateSentenceButton'),
-            generateWordsButton: document.getElementById('generateWordsButton'),
-            modalDynamicContent: document.getElementById('modalDynamicContent'),
-        };
+    <button id="open-sidebar-btn" class="fixed top-4 left-4 z-50 bg-white p-2 rounded-full shadow-lg border border-gray-200 hover:bg-gray-100 text-gray-700" title="Mở cài đặt"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg></button>
 
-        let voices = [];
-        let currentSelectedText = '';
-        let mainUtterance = null;
-        let ttsState = 'idle'; // 'idle', 'playing', 'paused'
-        let aiProcessState = { isRunning: false, isPaused: false, shouldStop: false };
+    <div class="container">
+        <div class="flex justify-between items-start mb-6 pl-12">
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Học tiếng Anh cùng Dichi</h1>
+            <img src="kieuoanh.jpg" alt="<3" class="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-white shadow-lg flex-shrink-0" onerror="this.style.display='none'">
+        </div>
 
-        // --- CORE & UTILITY FUNCTIONS ---
-        function showGlobalError(message) {
-            DOMElements.globalErrorMessage.textContent = message;
-            DOMElements.globalErrorMessage.classList.toggle('hidden', !message);
-        }
-
-        function copyTextToClipboard(text) {
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.position = "fixed";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            try {
-                document.execCommand('copy');
-                alert('Đã sao chép!');
-            } catch (err) {
-                alert('Không thể sao chép văn bản.');
-            }
-            document.body.removeChild(textArea);
-        }
-        
-        function chunkText(text, maxWords = 150) {
-            const sentences = text.match(/[^.!?]+[.!?]+|\S+/g) || [];
-            const chunks = [];
-            let currentChunk = [];
-            let currentWordCount = 0;
-
-            for (const sentence of sentences) {
-                const wordCount = (sentence.match(/\s+/g) || []).length + 1;
-                if (currentWordCount + wordCount > maxWords && currentChunk.length > 0) {
-                    chunks.push(currentChunk.join(' '));
-                    currentChunk = [];
-                    currentWordCount = 0;
-                }
-                currentChunk.push(sentence);
-                currentWordCount += wordCount;
-            }
-
-            if (currentChunk.length > 0) {
-                chunks.push(currentChunk.join(' '));
-            }
-            return chunks;
-        }
-
-        async function callGeminiAPI(prompt, generationConfig = {}) {
-            let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
-            const payload = { contents: chatHistory, generationConfig };
-            const userApiKey = DOMElements.apiKeyInput.value.trim();
-            if (!userApiKey) {
-                throw new Error('Vui lòng nhập khóa API Gemini của bạn vào phần cấu hình.');
-            }
-            const apiKey = userApiKey;
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-            const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            const responseBodyText = await response.text();
-            if (!response.ok) {
-                let errorMsg = `Lỗi API: ${response.status}`;
-                 if (response.status === 400) {
-                     errorMsg = 'Lỗi yêu cầu (400). Vui lòng kiểm tra lại khóa API và đảm bảo nó hợp lệ.';
-                 } else if (response.status === 401 || response.status === 403) {
-                     errorMsg = 'Lỗi xác thực API (401/403). Vui lòng kiểm tra lại khóa API bạn đã nhập.';
-                } else {
-                    try {
-                        const errorDetail = JSON.parse(responseBodyText);
-                        errorMsg += ` - ${errorDetail.error?.message || 'Không rõ lỗi'}`;
-                    } catch (e) {
-                        errorMsg += ` (${response.statusText || 'Không thể phân tích chi tiết lỗi'})`;
-                    }
-                }
-                throw new Error(errorMsg);
-            }
-            if (!responseBodyText) throw new Error('API đã trả về một phản hồi trống.');
-            const result = JSON.parse(responseBodyText);
-            if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
-                const responseText = result.candidates[0].content.parts[0].text;
-                if (generationConfig.responseMimeType === "application/json") {
-                    try {
-                        const match = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-                        const jsonString = match ? match[1].trim() : responseText.trim();
-                        return JSON.parse(jsonString);
-                    } catch (e) {
-                        console.error("Lỗi phân tích JSON:", e);
-                        console.error("Phản hồi nhận được từ AI:", responseText);
-                        throw new Error("Phản hồi JSON không hợp lệ từ AI. Vui lòng thử lại.");
-                    }
-                }
-                return responseText;
-            } else {
-                if (result.promptFeedback?.blockReason) throw new Error(`Yêu cầu bị chặn: ${result.promptFeedback.blockReason}`);
-                throw new Error('Cấu trúc phản hồi API không mong muốn.');
-            }
-        }
-
-        // --- DYNAMIC SECTION RENDERING ---
-        function createOutputSection(id, title, isHtml = false) {
-            const sectionId = `${id}Container`;
-            let section = document.getElementById(sectionId);
-            if (section) {
-                section.querySelector('.output-content').innerHTML = '';
-                 section.querySelector('h2').textContent = title;
-            } else {
-                section = document.createElement('div');
-                section.id = sectionId;
-                section.className = 'border border-gray-200 rounded-md';
-                section.innerHTML = `
-                    <div class="w-full flex justify-between items-center p-3 bg-gray-50">
-                        <h2 class="text-lg font-semibold text-gray-800">${title}</h2>
-                        <div class="flex items-center gap-2">
-                            <button data-action="copy" title="Sao chép" class="p-1 text-gray-500 hover:bg-gray-200 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" /><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" /></svg></button>
-                            <button data-action="toggle" title="Thu gọn/Mở rộng" class="p-1 text-gray-500 hover:bg-gray-200 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 10a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" clip-rule="evenodd" /></svg></button>
+        <div id="input-section" class="content-section !mt-0">
+            <div class="section-header">
+                <h3>📥 Nhập liệu & Tải file</h3>
+                <button class="toggle-button button-base button-secondary text-xs px-2 py-1" data-target="input-content-wrapper">Thu gọn</button>
+            </div>
+            <div id="input-content-wrapper">
+                <div class="space-y-4 mb-4">
+                    <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                        <div class="flex items-center space-x-2">
+                            <label for="file-upload" class="button-base button-secondary cursor-pointer">Tải lên tệp tin .docx</label>
+                            <input type="file" id="file-upload" class="hidden" accept=".txt,.docx,.DOCX">
+                            <span id="file-name" class="text-gray-600 text-sm"></span>
                         </div>
                     </div>
-                    <div class="section-content p-4">
-                        <div class="loading-spinner my-4 hidden"></div>
-                        <div class="output-content ${isHtml ? 'prose' : 'whitespace-pre-wrap'}"></div>
+                    <div class="mt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
+                        <input type="url" id="url-input" class="w-full sm:w-auto flex-grow p-2 border border-gray-300 rounded-md shadow-sm text-sm" placeholder="Hoặc dán URL...">
+                        <button id="fetch-url-button" class="button-base button-primary w-full sm:w-auto">Tải URL</button>
                     </div>
-                `;
-                if (id.startsWith('popup') || id === 'aiAnswer') {
-                    const container = id === 'aiAnswer' ? DOMElements.aiAnswerContainer : DOMElements.outputSections;
-                    container.insertBefore(section, container.firstChild);
-                } else {
-                    DOMElements.outputSections.appendChild(section);
-                }
-            }
-            return section;
-        }
-        
-        // --- SELECTION POPUP LOGIC ---
-        document.addEventListener('mouseup', handleTextSelection);
-        document.addEventListener('mousedown', (e) => {
-            if (!DOMElements.selectionPopup.contains(e.target)) {
-                DOMElements.selectionPopup.style.display = 'none';
-            }
-        });
+                    <div class="mt-2">
+                        <label class="block mb-2 text-sm font-medium text-gray-700">Văn bản trực tiếp:</label>
+                        <textarea id="text-input-area" rows="5" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm" placeholder="Dán văn bản tiếng Anh vào đây..."></textarea>
+                        <button id="process-text-button" class="button-base button-primary mt-2">Xử lý văn bản</button>
+                    </div>
+                    <div class="flex flex-wrap items-center justify-center gap-4 pt-4">
+                        <button id="pinyin-button" class="button-base button-secondary">Thêm Phát âm</button>
+                        <button id="segment-text-button" class="button-base button-secondary">Tách cụm từ</button>
+                        <button id="explain-text-button" class="button-base button-secondary">Giải thích</button>
+                        <button id="translate-full-text-button" class="button-base button-secondary">Dịch văn bản</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        function handleTextSelection(e) {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-            const selection = window.getSelection();
-            const selectedText = selection.toString().trim();
-            if (selectedText.length > 0 && selectedText.length < 50) {
-                currentSelectedText = selectedText;
-                const range = selection.getRangeAt(0);
-                const rect = range.getBoundingClientRect();
-                DOMElements.selectionPopup.style.display = 'flex';
-                DOMElements.selectionPopup.style.left = `${rect.left + window.scrollX + (rect.width / 2) - (DOMElements.selectionPopup.offsetWidth / 2)}px`;
-                DOMElements.selectionPopup.style.top = `${rect.top + window.scrollY - DOMElements.selectionPopup.offsetHeight - 10}px`;
-                const encodedText = encodeURIComponent(selectedText);
-                DOMElements.popupVtudien.href = `https://vtudien.com/anh-viet/dictionary/nghia-cua-tu-${encodedText}`;
-                DOMElements.popupCambridge.href = `https://dictionary.cambridge.org/dictionary/english-vietnamese/${encodedText}`;
-                DOMElements.popupYouglish.href = `https://youglish.com/pronounce/${encodedText}/english?`;
-                DOMElements.popupGoogle.href = `https://translate.google.com/?sl=en&tl=vi&text=${encodedText}&op=translate`;
-            } else if (!DOMElements.selectionPopup.contains(e.target)) {
-                DOMElements.selectionPopup.style.display = 'none';
-            }
-        }
+        <div id="media-player-section" class="content-section">
+            <div class="section-header">
+                <h3>🎬 Trình phát Media</h3>
+                <div><label for="media-upload" class="button-base button-primary text-xs px-3 py-1 mr-2 cursor-pointer">Tải file</label><input type="file" id="media-upload" class="hidden" accept="audio/*,video/*"><button class="toggle-button button-base button-secondary text-xs px-2 py-1" data-target="media-container">Thu gọn</button></div>
+            </div>
+            <div id="media-container" class="hidden">
+                <div class="resizable-media mb-3" id="video-wrapper"><video id="main-media-player" controls style="display:none;"></video></div>
+                <audio id="main-audio-player" controls class="w-full" style="display:none;"></audio>
+                <p id="media-filename" class="text-sm text-center text-gray-500 mb-2 italic">Chưa có file.</p>
+                <div id="media-controls" class="flex flex-wrap justify-center items-center gap-3 p-2 bg-gray-50 rounded border border-gray-200 opacity-50 pointer-events-none">
+                    <button id="media-rewind" class="button-base button-secondary text-xs">-10s</button>
+                    <button id="media-forward" class="button-base button-secondary text-xs">+10s</button>
+                    <div class="flex items-center space-x-2 ml-2 border-l pl-3 border-gray-300"><label class="text-xs font-medium">Tốc độ:</label><select id="media-rate" class="p-1 border border-gray-300 rounded text-xs"><option value="0.5">0.5x</option><option value="1" selected>1.0x</option><option value="1.5">1.5x</option><option value="2">2.0x</option></select></div>
+                </div>
+            </div>
+        </div>
 
-        DOMElements.popupPronounce.addEventListener('click', () => { if (currentSelectedText) { const utterance = new SpeechSynthesisUtterance(currentSelectedText); utterance.lang = 'en-US'; window.speechSynthesis.speak(utterance); } });
-        DOMElements.popupCopy.addEventListener('click', () => { if (currentSelectedText) copyTextToClipboard(currentSelectedText); });
-        
-        async function handlePopupAIAction(actionType) {
-            if (!currentSelectedText) return;
-            let config;
-            if (actionType === 'translate') {
-                config = { feature: 'popupTranslate', title: `Dịch AI cho: "${currentSelectedText}"`, prompt: (text) => `Translate this into Vietnamese: "${text}"`, isHtml: false };
-            } else {
-                config = { feature: 'popupIpa', title: `Phiên âm IPA cho: "${currentSelectedText}"`, prompt: (text) => `Provide only the IPA phonetic transcription for: "${text}"`, isHtml: false };
-            }
-            const section = createOutputSection(config.feature, config.title, config.isHtml);
-            const loader = section.querySelector('.loading-spinner');
-            const outputContent = section.querySelector('.output-content');
-            loader.classList.remove('hidden');
-            section.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            try {
-                const result = await callGeminiAPI(config.prompt(currentSelectedText));
-                outputContent.textContent = result;
-            } catch (error) {
-                outputContent.innerHTML = `<p class="text-red-500">${error.message}</p>`;
-            } finally {
-                loader.classList.add('hidden');
-            }
-        }
-        
-        DOMElements.popupTranslateAI.addEventListener('click', () => handlePopupAIAction('translate'));
-        DOMElements.popupIPA.addEventListener('click', () => handlePopupAIAction('ipa'));
+        <div id="tts-section-wrapper" class="content-section">
+             <div class="section-header">
+                <h3>🔊 Công cụ đọc văn bản (TTS)</h3>
+                <button class="toggle-button button-base button-secondary text-xs px-2 py-1" data-target="tts-inner-content">Thu gọn</button>
+            </div>
+            <div id="tts-inner-content" class="tts-controls space-y-3">
+                <div class="flex items-center gap-4">
+                    <button id="tts-play-pause" class="button-base button-primary flex items-center justify-center w-28">
+                        <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>
+                        <svg id="pause-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 00-1 1v2a1 1 0 102 0V9a1 1 0 00-1-1zm6 0a1 1 0 00-1 1v2a1 1 0 102 0V9a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                        <span id="play-pause-text" class="ml-2">Phát</span>
+                    </button>
+                    <button id="tts-stop" class="button-base button-secondary">Dừng</button>
+                    <div id="tts-progress-container" class="flex-grow"><div id="tts-progress-bar"></div></div>
+                </div>
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                    <div class="flex items-center space-x-2"><label class="text-sm font-medium">Giọng:</label><select id="tts-voice" class="p-2 border border-gray-300 rounded-md shadow-sm text-sm"></select></div>
+                    <div class="flex items-center space-x-2"><label class="text-sm font-medium">Tốc độ:</label><input type="range" id="tts-rate" min="0.5" max="2" value="1" step="0.1" class="w-24"><span id="tts-rate-label" class="text-sm font-mono">1.0x</span></div>
+                    <div class="flex items-center space-x-2"><input type="checkbox" id="auto-play-toggle" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"><label class="text-sm font-medium">Auto phát</label></div>
+                </div>
+            </div>
+        </div>
 
-        // --- INITIAL SETUP & EVENT LISTENERS ---
-        document.addEventListener('DOMContentLoaded', () => {
-            const savedApiKey = localStorage.getItem('geminiApiKey');
-            if (savedApiKey) DOMElements.apiKeyInput.value = savedApiKey;
+        <div id="main-text-section" class="content-section">
+            <div class="section-header"><h3>📄 Văn bản gốc</h3><div><button id="copy-main-text-button" class="copy-button button-base button-secondary text-xs px-2 py-1 mr-2" data-target="text-display">Sao chép</button><button class="toggle-button button-base button-secondary text-xs px-2 py-1" data-target="text-display">Thu gọn</button></div></div>
+            <div id="text-display" class="text-content">Vui lòng tải lên một tệp tin hoặc nhập văn bản để bắt đầu.</div>
+        </div>
+
+        <div id="pinyin-text-section" class="content-section hidden">
+            <div class="section-header"><h3>🗣️ Văn bản với Phát âm/IPA (AI)</h3><div class="task-controls"><button class="copy-button button-base button-secondary text-xs px-2 py-1" data-target="pinyin-content">Sao chép</button><button class="toggle-button button-base button-secondary text-xs px-2 py-1" data-target="pinyin-content">Thu gọn</button><button id="stop-pinyin" class="button-base button-danger text-xs px-2 py-1 hidden">Dừng</button></div></div>
+            <div id="progress-pinyin" class="task-progress-wrapper"><div class="task-progress-bar-bg"><div class="task-progress-bar-fill"></div></div><div class="task-status-text"><span>Đang xử lý...</span><span>0%</span></div></div>
+            <div id="pinyin-content" class="text-gray-700 text-content section-content"></div>
+        </div>
+        <div id="segmented-text-section" class="content-section hidden">
+            <div class="section-header"><h3>✂️ Văn bản theo cụm từ (AI)</h3><div class="task-controls"><button class="copy-button button-base button-secondary text-xs px-2 py-1" data-target="segmented-content">Sao chép</button><button class="toggle-button button-base button-secondary text-xs px-2 py-1" data-target="segmented-content">Thu gọn</button><button id="stop-segment" class="button-base button-danger text-xs px-2 py-1 hidden">Dừng</button></div></div>
+            <div id="progress-segment" class="task-progress-wrapper"><div class="task-progress-bar-bg"><div class="task-progress-bar-fill"></div></div><div class="task-status-text"><span>Đang xử lý...</span><span>0%</span></div></div>
+            <div id="segmented-content" class="text-gray-700 text-content section-content"></div>
+        </div>
+        <div id="full-translation-section" class="content-section hidden">
+            <div class="section-header"><h3>🇻🇳 Bản dịch (AI)</h3><div class="task-controls"><button class="copy-button button-base button-secondary text-xs px-2 py-1" data-target="full-translation-content">Sao chép</button><button class="toggle-button button-base button-secondary text-xs px-2 py-1" data-target="full-translation-content">Thu gọn</button><button id="stop-translate" class="button-base button-danger text-xs px-2 py-1 hidden">Dừng</button></div></div>
+            <div id="progress-translate" class="task-progress-wrapper"><div class="task-progress-bar-bg"><div class="task-progress-bar-fill"></div></div><div class="task-status-text"><span>Đang xử lý...</span><span>0%</span></div></div>
+            <div id="full-translation-content" class="text-gray-700 text-content section-content"></div>
+        </div>
+        <div id="explanation-section" class="content-section hidden">
+            <div class="section-header"><h3>🎓 Giải thích nội dung (AI)</h3><div class="task-controls"><button class="copy-button button-base button-secondary text-xs px-2 py-1" data-target="explanation-content">Sao chép</button><button class="toggle-button button-base button-secondary text-xs px-2 py-1" data-target="explanation-content">Thu gọn</button><button id="stop-explain" class="button-base button-danger text-xs px-2 py-1 hidden">Dừng</button></div></div>
+            <div id="progress-explain" class="task-progress-wrapper"><div class="task-progress-bar-bg"><div class="task-progress-bar-fill"></div></div><div class="task-status-text"><span>Đang xử lý...</span><span>0%</span></div></div>
+            <div id="explanation-content" class="text-gray-700 text-content section-content"></div>
+        </div>
+
+        <div id="ai-tools-section" class="mt-8 content-section">
+            <h3 class="text-xl font-semibold mb-3 text-gray-800 text-center">🤖 Công cụ AI</h3>
+            <div class="flex items-center gap-2"><input type="text" id="ai-custom-input" placeholder="Nhập từ hoặc cụm từ..." class="p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm w-full"></div>
+            <div class="flex items-center justify-center gap-2 mt-2">
+                <button id="ai-generate-sentence-button" class="button-base button-primary">Tạo câu ví dụ</button>
+                <button id="ai-generate-related-words-button" class="button-base button-primary">Tạo từ liên quan</button>
+            </div>
+            <div id="loading-spinner" class="loading-spinner"></div>
+            <div id="ai-sentence-results-section" class="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-md text-gray-700 hidden"><div class="section-header"><h3>Câu ví dụ</h3><div><button class="copy-button button-base button-secondary text-xs px-2 py-1 mr-2" data-target="ai-sentence-content">Sao chép</button><button class="toggle-button button-base button-secondary text-xs px-2 py-1" data-target="ai-sentence-content">Thu gọn</button></div></div><div id="ai-sentence-content" class="section-content text-left"></div></div>
+            <div id="ai-related-words-results-section" class="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-md text-gray-700 hidden"><div class="section-header"><h3>Từ liên quan</h3><div><button class="copy-button button-base button-secondary text-xs px-2 py-1 mr-2" data-target="ai-related-words-content">Sao chép</button><button class="toggle-button button-base button-secondary text-xs px-2 py-1" data-target="ai-related-words-content">Thu gọn</button></div></div><div id="ai-related-words-content" class="section-content text-left"></div></div>
+        </div>
+
+        <div id="reference-section" class="content-section">
+            <h3 class="text-xl font-semibold mb-3 text-gray-800">Trang web tham khảo</h3>
+            <ul>
+                <li><a id="cambridge-link-ref" href="https://dictionary.cambridge.org/dictionary/english/" target="_blank">Cambridge Dictionary</a> - Từ điển Anh-Anh, Anh-Việt, có phát âm và IPA.</li>
+                <li><a id="youglish-link-ref" href="https://youglish.com/pronounce//english" target="_blank">YouGlish</a> - Phát âm trong ngữ cảnh qua video YouTube.</li>
+                <li><a id="vtudien-link-ref" href="https://vtudien.com/anh-viet" target="_blank">Vtudien.com</a> - Từ điển Anh-Việt.</li>
+                <!-- <li>* Web này được tặng cho <a href="https://www.facebook.com/kieuoanhdichi" target="_blank">Kiều Oanh</a> - Giáo viên tiếng Anh.</li> -->
+            </ul>
+        </div>
+
+        <div id="text-stats-section" class="hidden content-section">
+             <h3 class="text-xl font-semibold mb-3 text-gray-800">Thống kê</h3>
+             <p class="text-sm text-gray-600">Độ dài: <span id="char-count" class="font-bold">0</span> ký tự</p>
+             <p class="text-sm text-gray-600">Số từ: <span id="word-count" class="font-bold">0</span> từ</p>
+        </div>
+
+        <div id="lookup-modal" class="modal-overlay">
+            <div id="modal-content-inner" class="modal-content">
+                <button id="close-lookup-modal" class="close-button">&times;</button>
+                <h2 class="text-xl font-semibold mb-3 text-gray-800">Tra: <span id="selected-word-modal" class="font-bold text-indigo-600"></span></h2>
+                <div class="flex items-center gap-2 mt-2 mb-3"><button id="pronounce-word-button" class="button-base button-primary flex-1">Phát âm</button><button id="copy-word-button" class="button-base button-secondary flex-1">Sao chép</button></div>
+                <div class="space-y-2">
+                    <a id="cambridge-link-modal" href="#" target="_blank" class="link-button">Cambridge</a>
+                    <a id="youglish-link-modal" href="#" target="_blank" class="link-button">YouGlish</a>
+                    <a id="vtudien-link-modal" href="#" target="_blank" class="link-button">Vtudien</a>
+                </div>
+                <div id="google-translate-result" class="mt-4"></div>
+                <div id="translate-loading-spinner" class="loading-spinner"></div>
+            </div>
+        </div>
+        <div id="selection-popup" class="modal-content text-selection-popup hidden">
+            <button id="close-selection-popup" class="close-button">&times;</button>
+            <div class="flex flex-col space-y-2">
+                <button id="copy-selection-button" class="button-base button-secondary w-full">Sao chép</button>
+                <button id="translate-selection-button" class="button-base button-primary w-full">Dịch</button>
+                <button id="pronounce-selection-button" class="button-base button-primary w-full">Phát âm</button>
+                <a id="cambridge-selection-link" href="#" target="_blank" class="link-button">Tra Cambridge</a>
+            </div>
+            <div id="selection-translate-result" class="mt-2 p-2 bg-gray-50 border border-gray-200 rounded-md text-gray-700 text-sm hidden"></div>
+            <div id="selection-translate-spinner" class="loading-spinner"></div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+
+    <script>
+        function mainApp() {
+            // 1. DEFINITIONS (Hoisted Helpers)
+            function showNotification(message, type = 'success') {
+                const notification = document.createElement('div');
+                notification.textContent = message;
+                notification.style.position = 'fixed'; notification.style.bottom = '20px'; notification.style.left = '50%';
+                notification.style.transform = 'translateX(-50%)'; notification.style.padding = '10px 20px';
+                notification.style.borderRadius = '8px'; notification.style.color = 'white';
+                notification.style.backgroundColor = type === 'success' ? '#4f46e5' : '#dc2626';
+                notification.style.zIndex = '3500';
+                notification.style.opacity = '0';
+                notification.style.transition = 'opacity 0.3s ease'; document.body.appendChild(notification);
+                setTimeout(() => { notification.style.opacity = '1'; }, 10);
+                setTimeout(() => { notification.style.opacity = '0'; setTimeout(() => { if (document.body.contains(notification)) document.body.removeChild(notification); }, 300); }, 3000);
+            }
+
+            function copyToClipboard(text) {
+                if (!text) return;
+                const textArea = document.createElement("textarea"); textArea.value = text;
+                textArea.style.position = "fixed"; textArea.style.top = "-9999px"; document.body.appendChild(textArea);
+                textArea.select();
+                try { document.execCommand('copy'); showNotification('Đã sao chép!'); } catch (err) { showNotification('Lỗi sao chép!', 'error'); }
+                document.body.removeChild(textArea);
+            }
+
+            function copyHtmlToClipboard(element) {
+                if (!element) return;
+                if (typeof element === 'string') { copyToClipboard(element); return; }
+                const range = document.createRange();
+                range.selectNode(element);
+                window.getSelection().removeAllRanges(); window.getSelection().addRange(range);
+                try { document.execCommand('copy'); showNotification('Đã sao chép!'); } catch (err) { showNotification('Lỗi sao chép!', 'error'); }
+                window.getSelection().removeAllRanges();
+            }
+
+            // Kích hoạt kéo di chuyển cho các popup
+            function makeDraggable(element) {
+                let isDragging = false, initialMouseX, initialMouseY, initialElementLeft, initialElementTop;
+                element.addEventListener("mousedown", (e) => {
+                    // Tránh kéo khi click vào nút hoặc link
+                    if (e.target.closest('a, button, .close-button')) return;
+                    isDragging = true; element.style.cursor = 'grabbing'; element.style.zIndex = 3301;
+                    
+                    const rect = element.getBoundingClientRect(); 
+                    initialElementLeft = rect.left; 
+                    initialElementTop = rect.top; 
+                    initialMouseX = e.clientX; 
+                    initialMouseY = e.clientY; 
+                    
+                    element.style.position = 'fixed'; 
+                    e.preventDefault(); e.stopPropagation();
+                });
+                document.addEventListener("mousemove", (e) => { 
+                    if (isDragging) { 
+                        e.preventDefault(); 
+                        element.style.left = `${initialElementLeft + e.clientX - initialMouseX}px`; 
+                        element.style.top = `${initialElementTop + e.clientY - initialMouseY}px`; 
+                    } 
+                });
+                document.addEventListener("mouseup", () => { 
+                    if (isDragging) { 
+                        isDragging = false; 
+                        element.style.cursor = 'grab'; 
+                        element.style.zIndex = 3200; 
+                    } 
+                });
+            }
+
+            let activeMediaPlayer = null;
+            let voices = [];
+            const ttsVoiceSelect = document.getElementById('tts-voice');
+            const ttsRateSlider = document.getElementById('tts-rate');
+
+let isSpeaking = false;
+let ttsUtterance = null;
+
+function startTtsPlayback() {
+    // Lấy văn bản từ vùng hiển thị gốc
+    const textToSpeak = currentRawText.trim(); 
+
+    if (!textToSpeak) {
+        showNotification("Văn bản gốc rỗng!", "error");
+        return;
+    }
+
+    if (isSpeaking) {
+        // Nếu đang nói, tạm dừng
+        speechSynthesis.pause();
+        isSpeaking = false;
+        playIcon.classList.remove('hidden');
+        pauseIcon.classList.add('hidden');
+        playPauseText.textContent = 'Phát';
+        return;
+    } 
+    
+    if (speechSynthesis.paused) {
+        // Nếu đang tạm dừng, tiếp tục
+        speechSynthesis.resume();
+        isSpeaking = true;
+        playIcon.classList.add('hidden');
+        pauseIcon.classList.remove('hidden');
+        playPauseText.textContent = 'Tạm dừng';
+        return;
+    }
+
+    // Khởi tạo Utterance mới
+    speechSynthesis.cancel(); // Đảm bảo hủy bỏ mọi giọng nói trước đó
+    ttsUtterance = new SpeechSynthesisUtterance(textToSpeak);
+
+    // Gắn giọng nói và tốc độ
+    const selectedName = ttsVoiceSelect.value;
+    const selectedVoice = speechSynthesis.getVoices().find(v => v.name === selectedName);
+    if(selectedVoice) {
+        ttsUtterance.voice = selectedVoice;
+    }
+    ttsUtterance.rate = parseFloat(ttsRateSlider.value);
+    ttsUtterance.lang = 'en-US';
+
+    // Thiết lập trạng thái khi hoàn thành
+    ttsUtterance.onend = () => {
+        isSpeaking = false;
+        playIcon.classList.remove('hidden');
+        pauseIcon.classList.add('hidden');
+        playPauseText.textContent = 'Phát';
+        ttsProgressBar.style.width = '100%';
+        setTimeout(() => ttsProgressBar.style.width = '0%', 500);
+    };
+
+    // Theo dõi tiến trình (Tùy chọn, để thanh progress bar chạy)
+    const updateProgress = setInterval(() => {
+        if (!isSpeaking || !ttsUtterance) {
+            clearInterval(updateProgress);
+            return;
+        }
+        // Lưu ý: Web Speech API không cung cấp thời gian thực cho văn bản dài,
+        // nên chúng ta sẽ ước tính tiến trình dựa trên thời gian.
+        // Đây là giải pháp đơn giản thay thế:
+        // ttsProgressBar.style.width = `${(speechSynthesis.currentTime / totalDuration) * 100}%`;
+    }, 100);
+
+    // Bắt đầu phát
+    speechSynthesis.speak(ttsUtterance);
+    isSpeaking = true;
+    playIcon.classList.add('hidden');
+    pauseIcon.classList.remove('hidden');
+    playPauseText.textContent = 'Tạm dừng';
+}
+
+function stopTtsPlayback() {
+    speechSynthesis.cancel();
+    isSpeaking = false;
+    playIcon.classList.remove('hidden');
+    pauseIcon.classList.add('hidden'); // Pause icon (dừng)
+    playPauseText.textContent = 'Phát';
+    ttsProgressBar.style.width = '0%';
+}
+
+let voiceLoadTimeout;
+
+function populateVoiceList() {
+    clearTimeout(voiceLoadTimeout); // Xóa timeout cũ nếu có
+
+    voices = speechSynthesis.getVoices().filter(voice => voice.lang.startsWith('en'));
+    
+    ttsVoiceSelect.innerHTML = '';
+    
+    if (voices.length === 0) {
+        const allVoices = speechSynthesis.getVoices();
+        if(allVoices.length > 0) {
+            allVoices.forEach(v => ttsVoiceSelect.appendChild(new Option(`${v.name} (${v.lang})`, v.name)));
+        } else {
+            ttsVoiceSelect.appendChild(new Option('Đang tải giọng...', ''));
+            // Đặt timeout để thử lại nếu danh sách giọng nói chưa sẵn sàng
+            voiceLoadTimeout = setTimeout(populateVoiceList, 500); 
+            return;
+        }
+    } else {
+        voices.forEach(v => ttsVoiceSelect.appendChild(new Option(`${v.name} (${v.lang})`, v.name)));
+    }
+    
+    // Thêm lựa chọn giọng mặc định nếu danh sách không rỗng
+    if (ttsVoiceSelect.options.length > 0 && !ttsVoiceSelect.value) {
+        const defaultVoice = voices.find(v => v.lang === 'en-US' || v.lang === 'en-GB') || voices[0];
+        if (defaultVoice) {
+            ttsVoiceSelect.value = defaultVoice.name;
+        } else {
+            ttsVoiceSelect.value = ttsVoiceSelect.options[0].value;
+        }
+    }
+}
             populateVoiceList();
-        });
-        DOMElements.apiKeyInput.addEventListener('input', (e) => localStorage.setItem('geminiApiKey', e.target.value));
-        DOMElements.toggleApiSection.addEventListener('click', () => { DOMElements.apiSectionContent.classList.toggle('hidden'); DOMElements.apiChevron.classList.toggle('rotate-180'); });
-        DOMElements.toggleApiKeyVisibility.addEventListener('click', () => { const isPassword = DOMElements.apiKeyInput.type === 'password'; DOMElements.apiKeyInput.type = isPassword ? 'text' : 'password'; DOMElements.eyeIcon.classList.toggle('hidden', isPassword); DOMElements.eyeOffIcon.classList.toggle('hidden', !isPassword); });
-        DOMElements.englishInput.addEventListener('input', () => {
-            const text = DOMElements.englishInput.value;
-            const charCount = text.length;
-            const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
-            DOMElements.textCounter.textContent = `${wordCount} từ / ${charCount} ký tự`;
-        });
-        DOMElements.fileUpload.addEventListener('change', (event) => { const file = event.target.files[0]; if (!file) return; DOMElements.fileNameSpan.textContent = `Đang đọc...`; const reader = new FileReader(); reader.onload = (e) => { mammoth.extractRawText({ arrayBuffer: e.target.result }).then(result => { DOMElements.englishInput.value = result.value; DOMElements.fileNameSpan.textContent = file.name; DOMElements.englishInput.dispatchEvent(new Event('input')); }).catch(err => showGlobalError("Không thể đọc file .docx.")); }; reader.readAsArrayBuffer(file); });
-        
-        // --- AI TASK CONTROL ---
-        function addAiProcessControls(outputContent) {
-            removeAiProcessControls();
-            const controlDiv = document.createElement('div');
-            controlDiv.id = 'aiProcessControls';
-            controlDiv.className = 'flex items-center gap-2 mb-4 p-2 bg-gray-100 rounded-md';
-            controlDiv.innerHTML = `
-                <button id="aiPauseResumeBtn" class="bg-yellow-500 text-white py-1 px-3 rounded-md text-sm hover:bg-yellow-600">Tạm dừng</button>
-                <button id="aiStopBtn" class="bg-red-600 text-white py-1 px-3 rounded-md text-sm hover:bg-red-700">Dừng hẳn</button>
-                <span id="aiProgressIndicator" class="text-sm text-gray-600"></span>
-            `;
-            outputContent.prepend(controlDiv);
-
-            document.getElementById('aiPauseResumeBtn').addEventListener('click', toggleAiPause);
-            document.getElementById('aiStopBtn').addEventListener('click', stopAiProcess);
-        }
-
-        function removeAiProcessControls() {
-            const controls = document.getElementById('aiProcessControls');
-            if (controls) controls.remove();
-        }
-
-        function toggleAiPause() {
-            aiProcessState.isPaused = !aiProcessState.isPaused;
-            const btn = document.getElementById('aiPauseResumeBtn');
-            if (btn) {
-                btn.textContent = aiProcessState.isPaused ? 'Tiếp tục' : 'Tạm dừng';
-                btn.classList.toggle('bg-yellow-500', !aiProcessState.isPaused);
-                btn.classList.toggle('bg-blue-500', aiProcessState.isPaused);
+            if (speechSynthesis.onvoiceschanged !== undefined) {
+                speechSynthesis.onvoiceschanged = populateVoiceList;
             }
-        }
+            setTimeout(populateVoiceList, 1000); // Thử lại sau 1 giây
 
-        function stopAiProcess() {
-            aiProcessState.shouldStop = true;
-        }
+function speakWord(text) {
+    if(activeMediaPlayer && !activeMediaPlayer.paused) activeMediaPlayer.pause();
+    if (!text) return;
 
-        // --- FEATURE PROCESSING ---
-        async function runAiTask(button, config) {
-            const text = DOMElements.englishInput.value.trim();
-            if (!text) { showGlobalError('Vui lòng nhập văn bản trước.'); return; }
-            if (aiProcessState.isRunning) { showGlobalError('Một tác vụ AI khác đang chạy. Vui lòng đợi hoặc dừng tác vụ đó.'); return; }
-            showGlobalError('');
+    // Cập nhật danh sách giọng nói ngay trước khi phát để có dữ liệu mới nhất
+    populateVoiceList(); 
+    
+    // Đảm bảo hủy bỏ TTS toàn văn bản nếu đang chạy
+    if (isSpeaking) {
+        speechSynthesis.cancel();
+        isSpeaking = false;
+        playIcon.classList.remove('hidden');
+        pauseIcon.classList.add('hidden');
+        playPauseText.textContent = 'Phát';
+        ttsProgressBar.style.width = '0%';
+    }
+    
+    // Logic phát âm từ
+    speechSynthesis.cancel(); // Hủy bỏ ngay trước khi gọi Utterance mới
+    const u = new SpeechSynthesisUtterance(text);
+    
+    const selectedName = ttsVoiceSelect.value;
+    // Lấy đối tượng giọng nói từ danh sách voices (đã được cập nhật)
+    const selectedVoice = voices.find(v => v.name === selectedName); 
+    
+    if(selectedVoice) { 
+        u.voice = selectedVoice; 
+    } else {
+        u.lang = 'en-US'; 
+    }
 
-            aiProcessState = { isRunning: true, isPaused: false, shouldStop: false };
+    u.rate = ttsRateSlider.value;
+    u.lang = 'en-US'; 
+    speechSynthesis.speak(u);
+}
+// 2. CONSTANTS (UPDATED PROMPTS FOR STRICT JSON OUTPUT)
+            const DEFAULT_PROMPTS = {
+                // Tối ưu prompt để giảm thiểu lỗi JSON Parse và đảm bảo IPA chuẩn
+                pinyin: `Phân tích đoạn văn bản tiếng Anh sau thành từng từ một.
+BẮT BUỘC chỉ trả về JSON mảng các đối tượng. Mỗi đối tượng gồm "word" (từ tiếng Anh) và "phonetic" (cách đọc, IPA).
+QUAN TRỌNG: Với mỗi từ, "phonetic" KHÔNG ĐƯỢC ĐỂ TRỐNG và phải là phiên âm IPA chuẩn quốc tế (ví dụ: 'this' -> 'ðɪs').
+Với dấu câu hoặc ký tự xuống dòng (\\n), "phonetic" là chuỗi rỗng.
+Ví dụ chuẩn: 'Hello world.' -> [{"word": "Hello", "phonetic": "həˈləʊ"}, {"word": "world", "phonetic": "wɜːld"}, {"word": ".", "phonetic": ""}]
+Đây là văn bản:\n\n{{TEXT}}`,
+                
+                // Tối ưu prompt để giảm thiểu lỗi JSON Parse và đảm bảo IPA chuẩn
+                segment: `Phân đoạn văn bản tiếng Anh sau thành các từ/cụm từ có nghĩa (tokens), dấu câu, và ký tự xuống dòng, kèm theo Phát âm (phonetic/IPA) cho mỗi từ/cụm từ.
+BẮT BUỘC chỉ trả về JSON mảng các đối tượng, mỗi đối tượng có thuộc tính "word" và "phonetic".
+QUAN TRỌNG: "phonetic" phải là phiên âm IPA chuẩn quốc tế.
+Đối với dấu câu hoặc ký tự xuống dòng (\\n), "phonetic" sẽ là một chuỗi rỗng.
+Ví dụ: 'The quick brown fox.' -> [{"word":"The","phonetic":"ðə"},{"word":"quick brown","phonetic":"kwɪk braʊn"},{"word":"fox","phonetic":"fɒks"},{"word":".","phonetic":""}].\n\n{{TEXT}}`,
+                
+                explain: `Giải thích nội dung đoạn văn bản tiếng Anh sau bằng TIẾNG VIỆT.
+Yêu cầu: 1. Chia theo từng câu (gồm từ tiếng Anh, Phát âm, Nghĩa Việt). 2. Phân tích ngữ pháp và từ vựng quan trọng trong mỗi câu. 3. Nếu đoạn văn là tiêu đề hoặc rất ngắn, hãy giải thích ý nghĩa của tiêu đề đó.
+KHÔNG dùng tiếng Anh trong phần giải thích.
+Văn bản:\n\n{{TEXT}}`,
+                
+                translate: `Dịch đoạn văn bản tiếng Anh sau sang TIẾNG VIỆT chuẩn.
+Chỉ trả về nội dung bản dịch, không thêm lời dẫn hoặc thông tin không liên quan.
+Văn bản:\n\n{{TEXT}}`
+            };
 
-            const section = createOutputSection(config.featureId, config.title, config.isHtml);
-            const outputContent = section.querySelector('.output-content');
-            const loader = section.querySelector('.loading-spinner');
+            // 3. SIDEBAR & INIT
+            const sidebar = document.getElementById('settings-sidebar');
+            const sidebarOverlay = document.getElementById('sidebar-overlay');
+            const openSidebarBtn = document.getElementById('open-sidebar-btn');
+            const closeSidebarBtn = document.getElementById('close-sidebar');
+            const navLinks = document.querySelectorAll('.menu-link');
+            if(openSidebarBtn) {
+                openSidebarBtn.addEventListener('click', () => { sidebar.classList.remove('-translate-x-full'); sidebarOverlay.classList.remove('hidden'); });
+                closeSidebarBtn.addEventListener('click', closeSidebar);
+                sidebarOverlay.addEventListener('click', closeSidebar);
+                navLinks.forEach(link => link.addEventListener('click', closeSidebar));
+            }
+            function closeSidebar() { sidebar.classList.add('-translate-x-full'); sidebarOverlay.classList.add('hidden'); }
+
+            // 4. DOM ELEMENTS 
+            const textDisplay = document.getElementById('text-display');
+            const delayInput = document.getElementById('delay-input');
+            const chunkSizeInput = document.getElementById('chunk-size-input');
+            const urlInput = document.getElementById('url-input');
+            const fetchUrlButton = document.getElementById('fetch-url-button');
+            const fileUploadInput = document.getElementById('file-upload');
+            const fileNameSpan = document.getElementById('file-name');
+            const textInputArea = document.getElementById('text-input-area');
+            const processTextButton = document.getElementById('process-text-button');
             
-            loader.classList.remove('hidden');
-            button.disabled = true;
-            outputContent.innerHTML = '';
+            // Stats
+            const textStatsSection = document.getElementById('text-stats-section');
+            const charCountSpan = document.getElementById('char-count');
+            const wordCountSpan = document.getElementById('word-count');
+            const copyMainTextButton = document.getElementById('copy-main-text-button');
+            
+            // Settings & Prompts
+            const aiProviderSelect = document.getElementById('ai-provider-select');
+            const apiKeyInput = document.getElementById('api-key-input');
+            const saveApiKeyButton = document.getElementById('save-api-key-button');
+            const apiKeyGuide = document.getElementById('api-key-guide');
+            const apiKeyStatus = document.getElementById('api-key-status');
+            const prompts = {
+                pinyin: document.getElementById('prompt-pinyin'),
+                segment: document.getElementById('prompt-segment'),
+                explain: document.getElementById('prompt-explain'),
+                translate: document.getElementById('prompt-translate')
+            };
+            const resetPromptsBtn = document.getElementById('reset-prompts-btn');
 
-            try {
-                const chunks = chunkText(text);
-                if (chunks.length > 1) addAiProcessControls(outputContent);
+            // Media
+            const mediaUploadInput = document.getElementById('media-upload');
+            const mediaContainer = document.getElementById('media-container');
+            const mainVideoPlayer = document.getElementById('main-media-player');
+            const mainAudioPlayer = document.getElementById('main-audio-player');
+            const mediaFilename = document.getElementById('media-filename');
+            const mediaControls = document.getElementById('media-controls');
+            const mediaRewindBtn = document.getElementById('media-rewind');
+            const mediaForwardBtn = document.getElementById('media-forward');
+            const mediaRateSelect = document.getElementById('media-rate');
+            
+            // TTS
+            
+            const ttsPlayPauseBtn = document.getElementById('tts-play-pause').addEventListener('click', startTtsPlayback);
+            const playIcon = document.getElementById('play-icon');
+            const pauseIcon = document.getElementById('pause-icon');
+            const playPauseText = document.getElementById('play-pause-text');
+            const ttsStopBtn = document.getElementById('tts-stop').addEventListener('click', stopTtsPlayback);
+            const ttsProgressContainer = document.getElementById('tts-progress-container');
+            const ttsProgressBar = document.getElementById('tts-progress-bar');
+            const autoPlayToggle = document.getElementById('auto-play-toggle');
+
+            // Popups
+            const lookupModalOverlay = document.getElementById('lookup-modal');
+            const modalContentInner = document.getElementById('modal-content-inner');
+            const selectedWordModalSpan = document.getElementById('selected-word-modal');
+            const googleTranslateResultDiv = document.getElementById('google-translate-result');
+            const translateLoadingSpinner = document.getElementById('translate-loading-spinner');
+            const closeLookupModalBtn = document.getElementById('close-lookup-modal');
+            const pronounceWordButton = document.getElementById('pronounce-word-button');
+            const copyWordButton = document.getElementById('copy-word-button');
+            const selectionPopup = document.getElementById('selection-popup');
+            const closeSelectionPopupBtn = document.getElementById('close-selection-popup');
+            const copySelectionButton = document.getElementById('copy-selection-button');
+            const translateSelectionButton = document.getElementById('translate-selection-button');
+            const pronounceSelectionButton = document.getElementById('pronounce-selection-button');
+            const cambridgeSelectionLink = document.getElementById('cambridge-selection-link');
+            const selectionTranslateResultDiv = document.getElementById('selection-translate-result');
+            const selectionTranslateSpinner = document.getElementById('selection-translate-spinner');
+            
+            // AI Tools
+            const aiCustomInput = document.getElementById('ai-custom-input');
+            let currentRawText = '';
+            let requestQueue = [];
+            let isRequestLoopRunning = false;
+            let speechStartIndex = 0;
+
+            // Kích hoạt kéo thả cho các popup
+            makeDraggable(modalContentInner);
+            makeDraggable(selectionPopup);
+
+            // 5. LOGIC & TASKS
+            // Load Prompts immediately
+            function loadPrompts() {
+                prompts.pinyin.value = localStorage.getItem('promptPinyin') || DEFAULT_PROMPTS.pinyin;
+                prompts.segment.value = localStorage.getItem('promptSegment') || DEFAULT_PROMPTS.segment;
+                prompts.explain.value = localStorage.getItem('promptExplain') || DEFAULT_PROMPTS.explain;
+                prompts.translate.value = localStorage.getItem('promptTranslate') || DEFAULT_PROMPTS.translate;
+            }
+            loadPrompts();
+
+            // Tasks Registry
+            const tasks = {
+                pinyin: { active: false, currentIndex: 0, queue: [], container: document.getElementById('pinyin-content'), section: document.getElementById('pinyin-text-section'), processor: processPhoneticsChunk, stopBtn: document.getElementById('stop-pinyin'), progressDiv: document.getElementById('progress-pinyin') },
+                segment: { active: false, currentIndex: 0, queue: [], container: document.getElementById('segmented-content'), section: document.getElementById('segmented-text-section'), processor: processSegmentationChunk, stopBtn: document.getElementById('stop-segment'), progressDiv: document.getElementById('progress-segment') },
+                explain: { active: false, currentIndex: 0, queue: [], container: document.getElementById('explanation-content'), section: document.getElementById('explanation-section'), processor: processExplanationChunk, stopBtn: document.getElementById('stop-explain'), progressDiv: document.getElementById('progress-explain') },
+                translate: { active: false, currentIndex: 0, queue: [], container: document.getElementById('full-translation-content'), section: document.getElementById('full-translation-section'), processor: processTranslationChunk, stopBtn: document.getElementById('stop-translate'), progressDiv: document.getElementById('progress-translate') }
+            };
+
+            async function processRequestQueue() {
+                if (isRequestLoopRunning) return;
+                isRequestLoopRunning = true;
+                while (requestQueue.length > 0) {
+                    const job = requestQueue.shift();
+                    const task = tasks[job.taskKey];
+                    if (!task.active) continue;
+
+                    updateTaskStatus(job.taskKey, "Đang xử lý...");
+                    try {
+                        await job.processor(job.chunk, task.container, null, job.index);
+                        task.currentIndex++;
+                        if (task.active && task.currentIndex < task.queue.length) scheduleNextChunk(job.taskKey);
+                        else if (task.currentIndex >= task.queue.length) finishTask(job.taskKey);
+                    } catch (error) {
+                        console.error(error);
+                        task.container.innerHTML += `<p class="text-red-500">Lỗi: ${error.message}</p>`;
+                    }
+                    const delay = (parseFloat(delayInput.value) || 5) * 1000;
+                    await new Promise(r => setTimeout(r, delay));
+                }
+                isRequestLoopRunning = false;
+            }
+
+            function scheduleNextChunk(taskKey) {
+                const task = tasks[taskKey];
+                if(!task.active || task.currentIndex >= task.queue.length) return;
+                requestQueue.push({ taskKey: taskKey, chunk: task.queue[task.currentIndex], index: task.currentIndex, processor: task.processor });
+                updateTaskStatus(taskKey, "Đang đợi...");
+                processRequestQueue();
+            }
+
+            function startTask(taskKey) {
+                // Làm sạch văn bản thô trước khi bắt đầu tác vụ
+                if(!currentRawText || !currentRawText.trim()) { 
+                    showNotification("Vui lòng nhập văn bản tiếng Anh", "error"); 
+                    return; 
+                }
+                const task = tasks[taskKey];
+                task.section.classList.remove('hidden');
+                task.stopBtn.classList.remove('hidden');
+                task.progressDiv.style.display = 'block';
+                task.active = true;
+
+                if(task.queue.length === 0 || task.currentIndex >= task.queue.length) {
+                    task.container.innerHTML = '';
+                    const size = parseInt(chunkSizeInput.value) || 100;
+                    // Sử dụng hàm chunkText mới để giữ nguyên ranh giới đoạn
+                    task.queue = chunkText(currentRawText, size); 
+                    task.currentIndex = 0;
+                }
+                scheduleNextChunk(taskKey);
+            }
+
+            function stopTask(taskKey) {
+                tasks[taskKey].active = false;
+                tasks[taskKey].stopBtn.classList.add('hidden');
+                updateTaskStatus(taskKey, "Đã dừng");
+            }
+
+            function finishTask(taskKey) {
+                tasks[taskKey].active = false;
+                tasks[taskKey].stopBtn.classList.add('hidden');
+                updateTaskStatus(taskKey, "Hoàn thành!");
+            }
+
+            function updateTaskStatus(taskKey, text) {
+                const t = tasks[taskKey];
+                const p = Math.round((t.currentIndex / Math.max(t.queue.length, 1)) * 100);
+                t.progressDiv.querySelector('.task-progress-bar-fill').style.width = `${p}%`;
+                t.progressDiv.querySelector('.task-status-text').innerHTML = `<span>${text}</span><span>${p}%</span>`;
+            }
+
+            // --- PROCESSORS (UPDATED FOR ENGLISH PHONETICS) ---
+            async function processPhoneticsChunk(chunk, container, _, index) {
+                const p = getPrompt('pinyin', chunk);
+                // Schema uses "phonetic"
+                const schema = { type: "ARRAY", items: { type: "OBJECT", properties: { "word": { "type": "STRING" }, "phonetic": { "type": "STRING" } } } };
+                const res = await callAI(p, "application/json", schema);
+                // res là chuỗi JSON đã được xử lý bởi callAI
+                let data = JSON.parse(res);
+
+                data.forEach(item => {
+                    const word = (item.word||'').toString();
+                    if(item.phonetic) {
+                        const r = document.createElement('ruby'); r.className='word-clickable'; r.textContent=word;
+                        const rt = document.createElement('rt'); rt.textContent=item.phonetic; r.appendChild(rt);
+                        r.onclick = (e) => { e.stopPropagation(); openLookupModal(word, e); };
+                        container.appendChild(r);
+                    } else {
+                        const s = document.createElement('span'); s.innerHTML = word.replace(/ /g, '&nbsp;'); container.appendChild(s);
+                    }
+                });
+            }
+
+            async function processSegmentationChunk(chunk, container, _, index) {
+                const p = getPrompt('segment', chunk);
+                // Schema uses "phonetic"
+                const schema = { type: "ARRAY", items: { type: "OBJECT", properties: { "word": { "type": "STRING" }, "phonetic": { "type": "STRING" } }, required: ["word", "phonetic"] } };
+                const res = await callAI(p, "application/json", schema);
+                // res là chuỗi JSON đã được xử lý bởi callAI
+                let data = JSON.parse(res);
+
+                data.forEach(seg => {
+                     const word = (seg.word||seg.text||'').toString();
+                     if(word==='\n') container.appendChild(document.createElement('br'));
+                     else if(word.match(/\b\w+\b/)) { // Check for words/phrases (English)
+                        const r = document.createElement('ruby'); r.className='segmented-word';
+                        r.textContent=word;
+                        if(seg.phonetic) { const rt=document.createElement('rt'); rt.textContent=seg.phonetic; r.appendChild(rt); }
+                        r.onclick = (e) => { e.stopPropagation(); openLookupModal(word, e); };
+                        container.appendChild(r);
+                     } else {
+                         const s = document.createElement('span'); s.innerHTML = word.replace(/ /g, '&nbsp;'); container.appendChild(s);
+                     }
+                });
+            }
+
+            async function processExplanationChunk(chunk, container, _, index) {
+                const p = getPrompt('explain', chunk);
+                const res = await callAI(p, "text/plain");
+                container.innerHTML += `<h4 class="font-bold text-indigo-700 mb-2 mt-4">Đoạn ${index+1}:</h4>` + res.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>') + '<hr class="my-4">';
+            }
+
+            async function processTranslationChunk(chunk, container, _, index) {
+                const p = getPrompt('translate', chunk);
+                const res = await callAI(p, "text/plain");
+                container.innerText += res + '\n\n';
+            }
+
+            // --- UTILS & API ---
+            function getPrompt(type, text) {
+                let t = prompts[type].value;
+                if(!t.trim()) t = DEFAULT_PROMPTS[type];
+                // Đảm bảo văn bản được làm sạch (trim) trước khi gửi
+                return t.replace('{{TEXT}}', text.trim());
+            }
+
+            // HÀM CHUNKTEXT MỚI: Tối ưu hóa việc gộp đoạn ngắn (Conditional Merging)
+            // function chunkText(text, size) {
+            //     const chunks = [];
+            //     if (!text) return chunks;
                 
-                const progressIndicator = document.getElementById('aiProgressIndicator');
+            //     // Cài đặt kích thước tối thiểu cho một chunk để tránh lãng phí request
+            //     const MIN_CHUNK_SIZE = 50; 
+            //     const maxChunkSize = size;
+                
+            //     // 1. Chia văn bản thành các "phần" (gồm đoạn văn bản hoặc dấu phân cách \n\n)
+            //     const parts = text.split(/(\n{2,})/).filter(p => p.length > 0);
+                
+            //     let currentChunk = '';
+                
+            //     for(let i = 0; i < parts.length; i++) {
+            //         let part = parts[i];
+                    
+            //         // Nếu part là dấu phân cách đoạn cứng (như \n\n)
+            //         if (part.match(/(\n{2,})/)) {
+            //             if (currentChunk.trim()) {
+            //                 chunks.push(currentChunk.trim());
+            //                 currentChunk = '';
+            //             }
+            //             chunks.push(part); // Thêm dấu phân cách đoạn
+            //             continue;
+            //         }
+                    
+            //         const trimmedPart = part.trim();
+            //         if (!trimmedPart) continue;
 
-                for (let i = 0; i < chunks.length; i++) {
-                    if (aiProcessState.shouldStop) {
-                        if(progressIndicator) progressIndicator.textContent = `Đã dừng bởi người dùng.`;
-                        break;
+            //         let potentialChunk = currentChunk + (currentChunk.length > 0 ? ' ' : '') + trimmedPart;
+                    
+            //         // Trường hợp 1: Chunk hiện tại CÓ THỂ GỘP VÀO:
+            //         if (currentChunk.length > 0 && currentChunk.length < MIN_CHUNK_SIZE) {
+            //             // Gộp nếu chưa vượt quá giới hạn tối đa
+            //             if (potentialChunk.length <= maxChunkSize) {
+            //                 currentChunk = potentialChunk;
+            //                 continue;
+            //             }
+            //             // Nếu gộp sẽ vượt quá maxChunkSize, CHẤP NHẬN ĐẨY CHUNK NGẮN NÀY LÊN và bắt đầu chunk mới
+            //             chunks.push(currentChunk.trim());
+            //             currentChunk = trimmedPart;
+
+            //         }
+            //         // Trường hợp 2: Chunk hiện tại là chunk đầu tiên hoặc chunk mới
+            //         else {
+            //             if (potentialChunk.length <= maxChunkSize) {
+            //                 currentChunk = potentialChunk;
+            //             } else {
+            //                 // Nếu quá lớn, đẩy chunk hiện tại (nếu có) và bắt đầu chunk mới
+            //                 if (currentChunk.trim()) {
+            //                     chunks.push(currentChunk.trim());
+            //                 }
+            //                 currentChunk = trimmedPart;
+            //             }
+            //         }
+                    
+            //         // Đẩy chunk hiện tại nếu nó đã đạt kích thước tối đa 
+            //         if (currentChunk.length >= maxChunkSize || i === parts.length - 1) {
+            //              if (currentChunk.trim()) {
+            //                  chunks.push(currentChunk.trim());
+            //                  currentChunk = '';
+            //              }
+            //         }
+            //     }
+                
+            //     // Đẩy phần còn lại nếu có
+            //     if (currentChunk.trim()) {
+            //         chunks.push(currentChunk.trim());
+            //     }
+
+            //     // Lọc cuối cùng để đảm bảo chỉ có các đoạn hợp lệ và dấu phân cách (nếu có)
+            //     return chunks.filter(c => c.trim().length > 0 || c.match(/(\n{2,})/));
+            // }
+
+function chunkText(text, size) {
+                const chunks = [];
+                if (!text) return chunks;
+                
+                const maxChunkSize = size;
+                
+                // 1. Chia toàn bộ văn bản thành các câu. Các dấu ngắt đoạn cứng sẽ được coi là câu cuối cùng
+                const sentences = text.split(/([.?!;\n\r]+)/).filter(Boolean);
+                
+                let currentChunk = '';
+                
+                for(let part of sentences) {
+                    const trimmedPart = part.trim();
+                    if (!trimmedPart) continue; // Bỏ qua các dòng trống hoàn toàn
+                    
+                    // Nếu phần này là một ký tự xuống dòng (không phải xuống dòng kép), chỉ thêm khoảng trắng nếu cần
+                    if (trimmedPart.match(/^[\n\r]+$/)) {
+                        // Bỏ qua, sẽ được xử lý khi hiển thị (trong processPhoneticsChunk)
+                        continue;
                     }
-                    while (aiProcessState.isPaused) {
-                        if(progressIndicator) progressIndicator.textContent = `Đã tạm dừng. Nhấn "Tiếp tục" để chạy lại.`;
-                        await new Promise(resolve => setTimeout(resolve, 200));
-                        if (aiProcessState.shouldStop) break;
+
+                    let potentialChunk = currentChunk + (currentChunk.length > 0 ? ' ' : '') + trimmedPart;
+                    
+                    // Nếu gộp câu mới VƯỢT QUÁ kích thước tối đa, đẩy chunk hiện tại và bắt đầu chunk mới
+                    if (potentialChunk.length > maxChunkSize && currentChunk.length > 0) {
+                        chunks.push(currentChunk.trim()); 
+                        currentChunk = trimmedPart;
+                    } else {
+                        currentChunk = potentialChunk;
                     }
-                    if (aiProcessState.shouldStop) {
-                         if(progressIndicator) progressIndicator.textContent = `Đã dừng bởi người dùng.`;
-                         break;
+                }
+                
+                // Đẩy phần còn lại (nếu có)
+                if (currentChunk.trim()) {
+                    chunks.push(currentChunk.trim());
+                }
+
+                // Kết quả là mảng các khối lớn, không bao gồm các dòng trống.
+                return chunks;
+            }
+
+            function parseAiJson(str) {
+                try {
+                    // Bước 0: Làm sạch triệt để chuỗi đầu vào
+                    // Loại bỏ các ký tự điều khiển Unicode không in được (bao gồm BOM)
+                    let cleanStr = String(str)
+                        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+                        .trim(); 
+
+                    // Bước 1: Tìm vị trí bắt đầu của khối JSON đầu tiên
+                    const jsonStart = cleanStr.indexOf('[');
+                    const objStart = cleanStr.indexOf('{');
+                    
+                    let start = -1;
+                    if (jsonStart !== -1 && objStart !== -1) {
+                         start = Math.min(jsonStart, objStart);
+                    } else if (jsonStart !== -1) {
+                         start = jsonStart;
+                    } else if (objStart !== -1) {
+                         start = objStart;
                     }
                     
-                    if (progressIndicator) progressIndicator.textContent = `Đang xử lý phần ${i + 1}/${chunks.length}...`;
+                    if (start === -1) {
+                        // In chuỗi đã được làm sạch nhưng vẫn bị lỗi
+                        console.error("Input string after deep clean:", cleanStr); 
+                        throw new Error("Không tìm thấy khối JSON mở đầu.");
+                    }
                     
-                    const result = await callGeminiAPI(config.promptFn(chunks[i]), config.generationConfig);
-                    config.resultCombinerFn(result, outputContent, chunks.length > 1);
+                    let jsonStr = cleanStr.substring(start);
+                    let openBracketCount = 0;
+                    let openBraceCount = 0;
+                    let jsonEnd = -1;
+
+                    // Bước 2: Tìm vị trí kết thúc hợp lệ của khối JSON ĐẦU TIÊN
+                    for (let i = 0; i < jsonStr.length; i++) {
+                        const char = jsonStr[i];
+                        
+                        if (char === '{') {
+                            openBraceCount++;
+                        } else if (char === '}') {
+                            openBraceCount--;
+                        } else if (char === '[') {
+                            openBracketCount++;
+                        } else if (char === ']') {
+                            openBracketCount--;
+                        }
+                        
+                        // Khối JSON kết thúc khi số lượng ngoặc mở và đóng cân bằng và đạt đến 0
+                        if ((openBraceCount === 0 && openBracketCount === 0) && (char === '}' || char === ']')) {
+                            jsonEnd = i;
+                            break;
+                        }
+                    }
+
+                    if (jsonEnd === -1) {
+                        throw new Error("Không tìm thấy khối JSON đóng cân bằng.");
+                    }
+
+                    // Cắt chuỗi JSON hợp lệ
+                    jsonStr = jsonStr.substring(0, jsonEnd + 1).trim();
+
+                    // Bước 3: Xử lý trường hợp AI tự động thêm dấu nháy kép bao quanh JSON
+                    if (jsonStr.startsWith('"') && jsonStr.endsWith('"')) {
+                        jsonStr = jsonStr.substring(1, jsonStr.length - 1).replace(/\\"/g, '"');
+                    }
+                    
+                    // Thực hiện parse
+                    const json = JSON.parse(jsonStr);
+                    
+                    // Trả về dữ liệu
+                    if(Array.isArray(json)) return json;
+                    for(let k in json) if(Array.isArray(json[k])) return json[k];
+                    
+                    if (typeof json === 'object' && json !== null) return json;
+
+                    return [json];
+                } catch(e) { 
+                    console.error("Lỗi phân tích JSON chi tiết:", e);
+                    throw new Error("Lỗi phân tích JSON"); 
                 }
-            } catch (error) {
-                outputContent.innerHTML = `<p class="text-red-500">${error.message}</p>`;
-            } finally {
-                loader.classList.add('hidden');
-                button.disabled = false;
-                removeAiProcessControls();
-                aiProcessState = { isRunning: false, isPaused: false, shouldStop: false };
             }
-        }
+            async function callAI(prompt, mimeType, schema) {
+                const key = apiKeyInput.value.trim();
+                const provider = aiProviderSelect.value;
+                if(!key) throw new Error("Thiếu API Key");
 
-        function handleOfflineLookup(button) {
-            const text = DOMElements.englishInput.value;
-            if (!text.trim()) { showGlobalError('Vui lòng nhập văn bản trước.'); return; }
-            showGlobalError('');
-
-            const section = createOutputSection('offline-lookup', 'Tra từ (Offline)');
-            const outputContent = section.querySelector('.output-content');
-            outputContent.innerHTML = '';
-            const tokens = text.split(/(\b[a-zA-Z']+\b)/);
-            tokens.forEach(token => {
-                if (/\b[a-zA-Z']+\b/.test(token)) {
-                    const wordSpan = document.createElement('span');
-                    wordSpan.textContent = token;
-                    wordSpan.className = 'clickable-word-offline';
-                    wordSpan.onclick = () => showDictionaryModal(token.toLowerCase());
-                    outputContent.appendChild(wordSpan);
+                let url, body;
+                if(provider === 'gemini') {
+                    url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${key}`;
+                    body = { 
+                        contents: [{ role: "user", parts: [{ text: prompt }] }], 
+                        generationConfig: { 
+                            responseMimeType: mimeType 
+                        } 
+                    };
+                    if(schema) body.generationConfig.responseSchema = schema;
                 } else {
-                    outputContent.appendChild(document.createTextNode(token));
+                    url = 'https://api.deepseek.com/chat/completions';
+                    const isJson = mimeType === 'application/json';
+                    body = {
+                        model: "deepseek-chat",
+                        messages: [{ role: "system", content: isJson ? "JSON format." : "" }, { role: "user", content: prompt }],
+                        stream: false
+                    };
+                    if(isJson) body.response_format = { type: "json_object" };
                 }
-            });
-        }
 
-        const ipaResultCombiner = (result, container) => {
-            result.forEach(item => {
-                if (/\b[a-zA-Z']+\b/.test(item.word)) {
-                    const el = document.createElement('div');
-                    el.className = 'word-with-ipa';
-                    el.innerHTML = `<span class="ipa-text-above">${item.ipa || ' '}</span><span class="original-word-below">${item.word}</span>`;
-                    el.querySelector('.original-word-below').onclick = () => showDictionaryModal(item.word.toLowerCase());
-                    container.appendChild(el);
-                } else {
-                    container.appendChild(document.createTextNode(item.word));
-                }
-            });
-        };
-
-        const genericResultCombiner = (result, container, isAppending, isHtml) => {
-            const content = isHtml ? result.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') : result;
-            if (isAppending && container.innerHTML !== '') {
-                container.innerHTML += '<hr class="my-4">' + content;
-            } else {
-                container.innerHTML += content;
-            }
-        };
-
-        const featureConfigs = { 
-            ipa: {
-                featureId: 'ipa', title: 'Phiên âm (AI)', isHtml: true,
-                promptFn: (chunk) => `For the following English text, provide a JSON array where each object represents a component of the text (word, punctuation, or whitespace). Each object must have two keys: "word" and "ipa". For English words, provide the phonetic transcription. For all other characters (punctuation, spaces, newlines), the "ipa" key must be an empty string. Preserve all original characters to reconstruct the text perfectly. Text: "${chunk}"`,
-                generationConfig: { responseMimeType: "application/json" },
-                resultCombinerFn: ipaResultCombiner
-            },
-            translate: { 
-                featureId: 'translate', title: "Dịch (AI)", isHtml: false,
-                promptFn: (text) => `Translate the following English text into Vietnamese: "${text}"`,
-                generationConfig: {},
-                resultCombinerFn: (result, container, isAppending) => genericResultCombiner(result, container, isAppending, false)
-            }, 
-            grammar: { 
-                featureId: 'grammar', title: "Ngữ pháp (AI)", isHtml: true,
-                promptFn: (text) => `Hãy giải thích ngữ pháp của đoạn văn sau bằng tiếng Việt cho người Việt đang học tiếng Anh. Sử dụng các đề mục, gạch đầu dòng rõ ràng. Giải thích các thì, cấu trúc câu và từ vựng quan trọng. Đoạn văn: "${text}"`,
-                generationConfig: {},
-                resultCombinerFn: (result, container, isAppending) => genericResultCombiner(result, container, isAppending, true)
-            },
-            askAI: {
-                featureId: 'aiAnswer', title: "Trả lời cho câu hỏi", isHtml: true,
-                promptFn: (chunk) => `Dựa vào văn bản sau: "${chunk}".\n\nHãy trả lời câu hỏi sau bằng tiếng Việt: "${DOMElements.aiQuestionInput.value.trim()}"`,
-                generationConfig: {},
-                resultCombinerFn: (result, container, isAppending) => genericResultCombiner(result, container, isAppending, true)
-            }
-        };
-
-        DOMElements.featureButtons.forEach(button => { 
-            button.addEventListener('click', () => { 
-                const feature = button.dataset.feature; 
-                if (feature === 'offline-lookup') {
-                    handleOfflineLookup(button);
-                } else {
-                    runAiTask(button, featureConfigs[feature]);
-                }
-            }); 
-        });
-        
-        DOMElements.outputSections.addEventListener('click', (e) => { const button = e.target.closest('button[data-action]'); if (!button) return; const action = button.dataset.action; const section = button.closest('.border'); const contentWrapper = section.querySelector('.section-content'); if (action === 'copy') { const textToCopy = section.querySelector('.output-content').innerText; copyTextToClipboard(textToCopy); } else if (action === 'toggle') { const isCollapsed = contentWrapper.style.maxHeight === '0px'; if (isCollapsed) { contentWrapper.style.maxHeight = contentWrapper.scrollHeight + "px"; contentWrapper.style.padding = "1rem"; button.querySelector('svg').classList.remove('rotate-180'); } else { contentWrapper.style.maxHeight = '0px'; contentWrapper.style.padding = "0 1rem"; button.querySelector('svg').classList.add('rotate-180'); } } });
-        
-        DOMElements.askAIButton.addEventListener('click', () => {
-            const question = DOMElements.aiQuestionInput.value.trim();
-            if (!question) { showGlobalError("Vui lòng nhập câu hỏi."); return; }
-            const config = { ...featureConfigs.askAI, title: `Trả lời cho: "${question}"`};
-            runAiTask(DOMElements.askAIButton, config);
-        });
-
-        // --- SPEECH SYNTHESIS LOGIC (REFACTORED) ---
-        function updatePlaybackIcons() { 
-            DOMElements.playIcon.classList.toggle('hidden', ttsState === 'playing');
-            DOMElements.pauseIcon.classList.toggle('hidden', ttsState !== 'playing');
-        }
-
-        function populateVoiceList() { voices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('en')); DOMElements.mainVoiceSelect.innerHTML = ''; voices.forEach(voice => { const option = document.createElement('option'); option.textContent = `${voice.name} (${voice.lang})`; option.setAttribute('data-name', voice.name); DOMElements.mainVoiceSelect.appendChild(option); }); }
-        if (speechSynthesis.onvoiceschanged !== undefined) { speechSynthesis.onvoiceschanged = populateVoiceList; }
-        
-        DOMElements.mainRateSlider.addEventListener('input', () => { 
-            const rate = DOMElements.mainRateSlider.value; 
-            DOMElements.mainRateValue.textContent = `${rate}x`; 
-            if (mainUtterance) mainUtterance.rate = parseFloat(rate); 
-        });
-
-        DOMElements.mainPlayPauseButton.addEventListener('click', () => {
-            const textToSpeak = DOMElements.englishInput.value.trim();
-            if (!textToSpeak) return;
-
-            if (ttsState === 'playing') {
-                speechSynthesis.pause();
-            } else if (ttsState === 'paused') {
-                speechSynthesis.resume();
-            } else { // ttsState === 'idle'
-                speechSynthesis.cancel(); 
-                mainUtterance = new SpeechSynthesisUtterance(textToSpeak);
-                const selectedVoiceName = DOMElements.mainVoiceSelect.options[DOMElements.mainVoiceSelect.selectedIndex].getAttribute('data-name');
-                mainUtterance.voice = voices.find(v => v.name === selectedVoiceName);
-                mainUtterance.rate = parseFloat(DOMElements.mainRateSlider.value);
+                const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(provider==='deepseek' && {'Authorization': `Bearer ${key}`}) }, body: JSON.stringify(body) });
+                if(!res.ok) throw new Error(`HTTP ${res.status}`);
+                const json = await res.json();
                 
-                mainUtterance.onstart = () => { ttsState = 'playing'; updatePlaybackIcons(); };
-                mainUtterance.onpause = () => { ttsState = 'paused'; updatePlaybackIcons(); };
-                mainUtterance.onresume = () => { ttsState = 'playing'; updatePlaybackIcons(); };
-                mainUtterance.onend = () => { ttsState = 'idle'; mainUtterance = null; updatePlaybackIcons(); };
-                mainUtterance.onerror = () => { ttsState = 'idle'; updatePlaybackIcons(); };
-
-                speechSynthesis.speak(mainUtterance);
+                let txt = provider === 'gemini' ? json.candidates?.[0]?.content?.parts?.[0]?.text : json.choices?.[0]?.message?.content;
+                if(!txt) throw new Error("No response");
+                
+                // IN KẾT QUẢ THÔ CỦA AI RA CONSOLE
+                console.log("AI Raw Text:", txt);
+                
+                if(mimeType === 'application/json') {
+                    // Trích xuất JSON và trả về chuỗi JSON đã được xử lý (để tránh parse 2 lần)
+                    const parsedData = parseAiJson(txt);
+                    return JSON.stringify(parsedData);
+                }
+                
+                console.log("AI:", txt);
+                return txt;
             }
-        });
 
-        DOMElements.mainStopButton.addEventListener('click', () => {
-            speechSynthesis.cancel();
-        });
+            // async function callAI(prompt, mimeType, schema) {
+            //     const key = apiKeyInput.value.trim();
+            //     const provider = aiProviderSelect.value;
+            //     if(!key) throw new Error("Thiếu API Key");
+
+            //     let url, body;
+            //     if(provider === 'gemini') {
+            //         url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${key}`;
+            //         body = { 
+            //             contents: [{ role: "user", parts: [{ text: prompt }] }], 
+            //             generationConfig: { 
+            //                 responseMimeType: mimeType 
+            //             } 
+            //         };
+            //         if(schema) body.generationConfig.responseSchema = schema;
+            //     } else {
+            //         url = 'https://api.deepseek.com/chat/completions';
+            //         const isJson = mimeType === 'application/json';
+            //         body = {
+            //             model: "deepseek-chat",
+            //             messages: [{ role: "system", content: isJson ? "JSON format." : "" }, { role: "user", content: prompt }],
+            //             stream: false
+            //         };
+            //         if(isJson) body.response_format = { type: "json_object" };
+            //     }
+
+            //     const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(provider==='deepseek' && {'Authorization': `Bearer ${key}`}) }, body: JSON.stringify(body) });
+            //     if(!res.ok) throw new Error(`HTTP ${res.status}`);
+            //     const json = await res.json();
+                
+            //     let txt = provider === 'gemini' ? json.candidates?.[0]?.content?.[0]?.text : json.choices?.[0]?.message?.content;
+            //     if(!txt) throw new Error("No response");
+                
+            //     // IN KẾT QUẢ THÔ CỦA AI RA CONSOLE
+            //     console.log("AI Raw Text:", txt);
+                
+            //     if(mimeType === 'application/json') {
+            //         // Trích xuất JSON và trả về chuỗi JSON đã được xử lý (để tránh parse 2 lần)
+            //         const parsedData = parseAiJson(txt);
+            //         return JSON.stringify(parsedData);
+            //     }
+                
+            //     console.log("AI:", txt);
+            //     return txt;
+            // }
+
+            // --- EVENT LISTENERS ---
+            // Task Buttons
+            document.getElementById('pinyin-button').addEventListener('click', () => startTask('pinyin'));
+            document.getElementById('segment-text-button').addEventListener('click', () => startTask('segment'));
+            document.getElementById('explain-text-button').addEventListener('click', () => startTask('explain'));
+            document.getElementById('translate-full-text-button').addEventListener('click', () => startTask('translate'));
+            // Stop Buttons
+            document.getElementById('stop-pinyin').addEventListener('click', () => stopTask('pinyin'));
+            document.getElementById('stop-segment').addEventListener('click', () => stopTask('segment'));
+            document.getElementById('stop-explain').addEventListener('click', () => stopTask('explain'));
+            document.getElementById('stop-translate').addEventListener('click', () => stopTask('translate'));
+            // Toggle Buttons
+            document.querySelectorAll('.toggle-button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const targetId = btn.getAttribute('data-target');
+                    let content;
+                    if(targetId) content = document.getElementById(targetId);
+                    else content = btn.closest('.section-header').nextElementSibling;
+                    
+                    if(content) {
+                        content.classList.toggle('hidden');
+                        btn.textContent = content.classList.contains('hidden') ? 'Hiển thị' : 'Thu gọn';
+                    }
+                });
+            });
+            // Copy Buttons
+            document.querySelectorAll('.copy-button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const targetId = btn.getAttribute('data-target');
+                    if(targetId) {
+                        const contentDiv = document.getElementById(targetId);
+                         copyHtmlToClipboard(contentDiv);
+                    } else {
+                        const content = btn.closest('.section-header').nextElementSibling;
+                        copyHtmlToClipboard(content);
+                    }
+                });
+            });
+            // Settings Buttons
+            Object.values(prompts).forEach((el, i) => {
+                const keys = ['promptPinyin', 'promptSegment', 'promptExplain', 'promptTranslate'];
+                el.addEventListener('change', () => localStorage.setItem(keys[i], el.value));
+            });
+            resetPromptsBtn.addEventListener('click', () => {
+                if(confirm("Khôi phục prompt gốc?")) {
+                    localStorage.removeItem('promptPinyin'); localStorage.removeItem('promptSegment');
+                    localStorage.removeItem('promptExplain'); localStorage.removeItem('promptTranslate');
+                    loadPrompts();
+                }
+            });
+            function updateApiKeyGuide() { 
+                apiKeyGuide.innerHTML = aiProviderSelect.value === 'gemini' ? 'Lấy API Key tại <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-600 hover:underline">Google AI Studio</a>.'
+                : 'Lấy API Key tại <a href="https://platform.deepseek.com/api_keys" target="_blank" class="text-blue-600 hover:underline">DeepSeek Platform</a>.';
+            }
+            aiProviderSelect.addEventListener('change', () => { localStorage.setItem('dichiAiProvider', aiProviderSelect.value); updateApiKeyGuide(); });
+            saveApiKeyButton.addEventListener('click', () => { localStorage.setItem('dichiApiKey', apiKeyInput.value); apiKeyStatus.textContent = "Đã lưu!"; setTimeout(() => apiKeyStatus.textContent = "", 2000); });
+            chunkSizeInput.addEventListener('change', () => localStorage.setItem('dichiChunkSize', chunkSizeInput.value));
+
+            // File Upload
+            fileUploadInput.addEventListener('change', (e) => {
+                const file = e.target.files[0]; if(!file) return;
+                e.target.value = ''; fileNameSpan.textContent = file.name;
+                if(file.name.toLowerCase().endsWith('.docx')) {
+                    if(window.mammoth) window.mammoth.convertToHtml({arrayBuffer: file}).then(r => processNewContent(r.value, true)).catch(err => alert(err));
+                    else { const reader = new FileReader(); reader.onload = ev => window.mammoth.convertToHtml({arrayBuffer: ev.target.result}).then(r => processNewContent(r.value, true)); reader.readAsArrayBuffer(file); }
+                } else {
+                    const reader = new FileReader(); reader.onload = ev => processNewContent(ev.target.result); reader.readAsText(file);
+                }
+            });
+            processTextButton.addEventListener('click', () => { if(textInputArea.value) processNewContent(textInputArea.value); });
+            
+            fetchUrlButton.addEventListener('click', async () => {
+                if(!urlInput.value) return;
+                fetchUrlButton.disabled = true; textDisplay.textContent = "Đang tải...";
+                try {
+                    const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(urlInput.value)}`);
+                    const html = await res.text();
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    const content = (doc.querySelector('article') || doc.querySelector('main') || doc.body).innerText;
+                    processNewContent(content);
+                } catch(e) { textDisplay.textContent = "Lỗi tải URL"; }
+                fetchUrlButton.disabled = false;
+            });
+
+            function processNewContent(content, isHtml=false) {
+                speechSynthesis.cancel();
+                Object.keys(tasks).forEach(k => { tasks[k].queue=[]; tasks[k].active=false; tasks[k].section.classList.add('hidden'); tasks[k].container.innerHTML=''; });
+                requestQueue.length = 0;
+                
+                if(isHtml) { textDisplay.innerHTML = content; currentRawText = textDisplay.innerText.trim(); } // Trim raw text
+                else { textDisplay.textContent = content; currentRawText = content.trim(); } // Trim raw text
+                
+                addClickableSpansTo(textDisplay, currentRawText);
+                document.getElementById('text-stats-section').classList.remove('hidden');
+                document.getElementById('char-count').textContent = currentRawText.length;
+                // Correctly count English words
+                document.getElementById('word-count').textContent = currentRawText.split(/\s+/).filter(w => w.length > 0).length;
+            }
+
+            function addClickableSpansTo(el, text) {
+                el.innerHTML = '';
+                // Split by English words (\b\w+\b) and non-word characters/spaces
+                text.split(/(\b\w+\b|\n)/).forEach(part => {
+                    if(part.match(/\b\w+\b/)) {
+                        // Treat the word itself as the clickable unit
+                        const s = document.createElement('span'); s.textContent = part; s.className = 'word-clickable';
+                        s.onclick = (e) => { e.stopPropagation(); openLookupModal(part, e); };
+                        el.appendChild(s);
+                    } else if(part === '\n') {
+                         el.appendChild(document.createElement('br'));
+                    }
+                    else el.appendChild(document.createTextNode(part));
+                });
+            }
+
+            // AI Tools
+            const aiSpinner = document.getElementById('loading-spinner');
+            document.getElementById('ai-generate-sentence-button').addEventListener('click', async () => {
+                const w = document.getElementById('ai-custom-input').value; if(!w) return;
+                aiSpinner.style.display = 'block'; document.getElementById('ai-sentence-results-section').classList.remove('hidden');
+                try {
+        const prompt = `Tạo 5 câu ví dụ tiếng Anh cho từ "${w}". \nQuan trọng: Meaning (Nghĩa) phải là TIẾNG VIỆT. \nJSON: {"items": [{"sentence": "...", "phonetic": "...", "meaning": "..."}]}`;
+        const resStr = await callAI(prompt, "application/json");
+        // --- ĐIỀU CHỈNH LỖI PHÂN TÍCH ---
+        const jsonResponse = JSON.parse(resStr);
+        // Đảm bảo data là mảng, lấy từ khóa 'items'
+        const data = Array.isArray(jsonResponse) ? jsonResponse : jsonResponse.items || [];
+        // ---------------------------------
+        document.getElementById('ai-sentence-content').innerHTML = data.map(i => `<div class="mb-2"><b>${i.sentence}</b><br><span class="text-gray-500 text-sm">${i.phonetic}</span><br><span class="text-blue-600 text-sm">${i.meaning}</span></div>`).join('');
+               
+                } catch(e) { alert(e.message); }
+                finally { aiSpinner.style.display = 'none'; }
+            });
+            document.getElementById('ai-generate-related-words-button').addEventListener('click', async () => {
+                 const w = document.getElementById('ai-custom-input').value; if(!w) return;
+                aiSpinner.style.display = 'block'; document.getElementById('ai-related-words-results-section').classList.remove('hidden');
+                try {
+        const prompt = `Tìm 10 từ liên quan đến "${w}" trong tiếng Anh. \nQuan trọng: Meaning (Nghĩa) phải là TIẾNG VIỆT. \nJSON: {"items": [{"word": "...", "phonetic": "...", "meaning": "..."}]}`;
+        const resStr = await callAI(prompt, "application/json");
         
-        // --- DICTIONARY MODAL LOGIC ---
-        function showDictionaryModal(word) { DOMElements.modalWord.textContent = word; DOMElements.modalIpa.textContent = ''; DOMElements.modalMeaning.textContent = ''; DOMElements.modalDynamicContent.innerHTML = ''; DOMElements.modalDefinitionLoading.classList.remove('hidden'); DOMElements.modalDefinitionContainer.classList.add('opacity-50'); const encodedWord = encodeURIComponent(word); DOMElements.modalCopyButton.onclick = () => copyTextToClipboard(word); DOMElements.vtudienLink.href = `https://vtudien.com/anh-viet/dictionary/nghia-cua-tu-${encodedWord}`; DOMElements.youglishLink.href = `https://youglish.com/pronounce/${encodedWord}/english?`; DOMElements.cambridgeLink.href = `https://dictionary.cambridge.org/dictionary/english-vietnamese/${encodedWord}`; DOMElements.dictionaryModal.classList.remove('hidden'); DOMElements.dictionaryModal.querySelector('.modal-content').classList.add('scale-100'); fetchWordDefinition(word); if (DOMElements.autoPronounceCheckbox.checked) speakWord(word); }
-        function hideDictionaryModal() { window.speechSynthesis.cancel(); DOMElements.dictionaryModal.querySelector('.modal-content').classList.remove('scale-100'); setTimeout(() => DOMElements.dictionaryModal.classList.add('hidden'), 300); }
-        async function fetchWordDefinition(word) { try { const prompt = `Provide a short IPA transcription and a concise Vietnamese meaning for the word: "${word}". Format as a JSON object: {"ipa": "...", "meaning": "..."}`; const config = { responseMimeType: "application/json" }; const data = await callGeminiAPI(prompt, config); DOMElements.modalIpa.textContent = data.ipa || 'N/A'; DOMElements.modalMeaning.textContent = data.meaning || 'Không tìm thấy'; } catch (err) { DOMElements.modalIpa.textContent = 'Lỗi'; DOMElements.modalMeaning.textContent = err.message; } finally { DOMElements.modalDefinitionLoading.classList.add('hidden'); DOMElements.modalDefinitionContainer.classList.remove('opacity-50'); } }
-        async function generateModalContent(word, type) { DOMElements.modalDynamicContent.innerHTML = '<div class="loading-spinner mx-auto"></div>'; let prompt; let renderer; if (type === 'sentence') { prompt = `Tạo 2 câu ví dụ cho từ tiếng Anh "${word}". Với mỗi câu, cung cấp phiên âm IPA và dịch nghĩa tiếng Việt. Trả về dưới dạng mảng JSON, mỗi đối tượng có các khóa: "sentence", "ipa", "translation".`; renderer = (data) => data.map(item => `<div class="p-3 border rounded-md bg-gray-50"><p class="font-semibold">${item.sentence}</p><p class="text-sm text-gray-600">/${item.ipa}/</p><p class="text-sm text-blue-600">${item.translation}</p></div>`).join(''); } else { prompt = `Tạo 3 từ liên quan (đồng nghĩa, trái nghĩa, hoặc cùng họ từ) cho từ "${word}". Với mỗi từ, cung cấp loại quan hệ, phiên âm IPA và nghĩa tiếng Việt. Trả về dưới dạng mảng JSON, mỗi đối tượng có các khóa: "word", "relation", "ipa", "meaning".`; renderer = (data) => data.map(item => `<div class="p-3 border rounded-md bg-gray-50"><p class="font-semibold">${item.word} <span class="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full">${item.relation}</span></p><p class="text-sm text-gray-600">/${item.ipa}/</p><p class="text-sm text-blue-600">${item.meaning}</p></div>`).join(''); } try { const config = { responseMimeType: "application/json" }; const data = await callGeminiAPI(prompt, config); DOMElements.modalDynamicContent.innerHTML = renderer(data); } catch (error) { DOMElements.modalDynamicContent.innerHTML = `<p class="text-red-500">Lỗi: ${error.message}</p>`; } }
-        DOMElements.closeModalButton.addEventListener('click', hideDictionaryModal);
-        DOMElements.dictionaryModal.addEventListener('click', (e) => { if (e.target === DOMElements.dictionaryModal) hideDictionaryModal(); });
-        DOMElements.generateSentenceButton.addEventListener('click', () => generateModalContent(DOMElements.modalWord.textContent, 'sentence'));
-        DOMElements.generateWordsButton.addEventListener('click', () => generateModalContent(DOMElements.modalWord.textContent, 'words'));
-        DOMElements.modalRateSlider.addEventListener('input', () => DOMElements.modalRateValue.textContent = `${DOMElements.modalRateSlider.value}x`);
-        function speakWord(word) { if (speechSynthesis.speaking) speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(word); utterance.lang = 'en-US'; utterance.rate = parseFloat(DOMElements.modalRateSlider.value); speechSynthesis.speak(utterance); }
-        DOMElements.modalSpeakButton.addEventListener('click', () => speakWord(DOMElements.modalWord.textContent));
+        // --- ĐIỀU CHỈNH LỖI PHÂN TÍCH ---
+        const jsonResponse = JSON.parse(resStr);
+        // Đảm bảo data là mảng, lấy từ khóa 'items'
+        const data = Array.isArray(jsonResponse) ? jsonResponse : jsonResponse.items || [];
+        // ---------------------------------
+        document.getElementById('ai-related-words-content').innerHTML 
+        = `<div class="grid grid-cols-2 gap-2">` + data.map(i => `<div class="p-2 border rounded cursor-pointer hover:bg-blue-50" onclick="document.getElementById('ai-custom-input').value='${i.word}'"><b>${i.word}</b><br><span class="text-xs">${i.phonetic}</span><br><span class="text-xs text-gray-600">${i.meaning}</span></div>`).join('') + `</div>`;
+                } catch(e) { alert(e.message); }
+                finally { aiSpinner.style.display = 'none'; }
+            });
+
+async function openLookupModal(word, e) {
+    selectedWordModalSpan.textContent = word;
+    googleTranslateResultDiv.innerHTML = ''; lookupModalOverlay.style.display = 'block';
+    
+    const enc = encodeURIComponent(word);
+    // Updated links for English dictionaries
+    document.getElementById('cambridge-link-modal').href = `https://dictionary.cambridge.org/dictionary/english/${enc}`;
+    document.getElementById('youglish-link-modal').href = `https://youglish.com/pronounce/${enc}/english`;
+    document.getElementById('vtudien-link-modal').href = `https://vtudien.com/anh-viet/dictionary/nghia-cua-tu-${enc}`;
+    
+    const modalWidth = modalContentInner.offsetWidth;
+    const modalHeight = modalContentInner.offsetHeight;
+    let left = e.clientX; let top = e.clientY;
+    if (left + modalWidth > window.innerWidth) left = window.innerWidth - modalWidth - 20;
+    if (top + modalHeight > window.innerHeight) top = window.innerHeight - modalHeight - 20;
+    
+    modalContentInner.style.top = `${top}px`; modalContentInner.style.left = `${left}px`;
+    
+    // Đảm bảo gán hàm speakWord với từ cần tra
+    pronounceWordButton.onclick = () => speakWord(word); 
+    copyWordButton.onclick = () => copyToClipboard(word);
+    
+    if(aiCustomInput) aiCustomInput.value = word;
+    if(autoPlayToggle && autoPlayToggle.checked) speakWord(word);
+
+    try {
+        const resStr = await getTranslation(word);
+        const res = JSON.parse(resStr);
+        // phonetic replaces pinyin
+        googleTranslateResultDiv.innerHTML = `<b>${res.phonetic}</b><br>${res.meaning}`;
+    } catch(e) { 
+        console.error("Lỗi khi dịch từ modal:", e);
+        googleTranslateResultDiv.innerHTML = 'Lỗi dịch'; 
+    }
+}
+            async function getTranslation(word) {
+
+            const prompt = `Dịch từ/cụm từ tiếng Anh "${word}" sang tiếng Việt. 
+BẮT BUỘC KHÔNG THÊM BẤT KỲ VĂN BẢN HAY LỜI GIỚI THIỆU NÀO.
+BẮT BUỘC chỉ trả về JSON với hai trường: "phonetic" (IPA chuẩn) và "meaning" (Nghĩa Việt).
+Ví dụ: {"phonetic": "...", "meaning": "..."}`;
+                 const res = await callAI(prompt, "application/json");
+                 return res;
+            }
+            
+            closeLookupModalBtn.addEventListener('click', () => lookupModalOverlay.style.display = 'none');
+            closeSelectionPopupBtn.addEventListener('click', () => selectionPopup.classList.add('hidden'));
+
+            // Selection Popup
+            document.addEventListener('mouseup', (e) => {
+                setTimeout(() => {
+                    const s = window.getSelection(); if (!s || s.isCollapsed) return;
+                    const t = s.toString().trim(); 
+                    if (!t || t.length < 2 || selectionPopup.contains(e.target) || modalContentInner.contains(e.target) || e.target.closest('.word-clickable')) return;
+ 
+                    lookupModalOverlay.style.display = 'none'; selectionPopup.classList.remove('hidden');
+                    
+                    const r = s.getRangeAt(0).getBoundingClientRect();
+                    let top = r.bottom + window.scrollY + 5; let left = r.left + window.scrollX;
+  
+                    selectionPopup.style.top = `${top}px`; selectionPopup.style.left = `${left}px`;
+                    
+                    if(aiCustomInput) aiCustomInput.value = t;
+                    if(autoPlayToggle && autoPlayToggle.checked) speakWord(t);
+                    
+                    copySelectionButton.onclick = () => { copyToClipboard(t); selectionPopup.classList.add('hidden'); };
+                    translateSelectionButton.onclick = async () => { 
+                        selectionTranslateResultDiv.classList.add('hidden');
+                        selectionTranslateSpinner.style.display = 'block';
+                        try {
+                             const resStr = await getTranslation(t); 
+                             const r = JSON.parse(resStr);
+                             if(r.meaning) { selectionTranslateResultDiv.innerHTML = `<strong>Dịch:</strong> ${r.phonetic} - ${r.meaning}`; selectionTranslateResultDiv.classList.remove('hidden'); }
+                        } catch (error) {
+                             selectionTranslateResultDiv.innerHTML = `<strong>Dịch:</strong> Lỗi: ${error.message}`; selectionTranslateResultDiv.classList.remove('hidden'); 
+                        }
+                        selectionTranslateSpinner.style.display = 'none';
+                    };
+                    pronounceSelectionButton.onclick = () => speakWord(t);
+                    cambridgeSelectionLink.href = `https://dictionary.cambridge.org/dictionary/english/${encodeURIComponent(t)}`;
+                }, 0);
+            });
+
+            mediaUploadInput.addEventListener('change', (e) => {
+                const file = e.target.files[0]; if(!file) return;
+                const url = URL.createObjectURL(file);
+                if(activeMediaPlayer) { activeMediaPlayer.pause(); activeMediaPlayer.src = ""; }
+                
+                document.getElementById('media-container').classList.remove('hidden');
+                document.getElementById('media-filename').textContent = file.name;
+                const v = document.getElementById('main-media-player');
+                const a = document.getElementById('main-audio-player');
+                
+                if(file.type.startsWith('video')) { 
+                    v.src = url; v.style.display = 'block'; a.style.display = 'none'; activeMediaPlayer = v;
+                } else { 
+                    a.src = url; a.style.display = 'block'; v.style.display = 'none'; activeMediaPlayer = a;
+                }
+                
+                document.getElementById('media-controls').classList.remove('opacity-50', 'pointer-events-none');
+                activeMediaPlayer.onplay = () => { speechSynthesis.cancel(); };
+            });
+            mediaRewindBtn.addEventListener('click', () => { if(activeMediaPlayer) activeMediaPlayer.currentTime -= 10; });
+            mediaForwardBtn.addEventListener('click', () => { if(activeMediaPlayer) activeMediaPlayer.currentTime += 10; });
+            mediaRateSelect.addEventListener('change', (e) => { if(activeMediaPlayer) activeMediaPlayer.playbackRate = parseFloat(e.target.value); });
+
+            // Load Config
+            if(localStorage.getItem('dichiApiKey')) apiKeyInput.value = localStorage.getItem('dichiApiKey');
+            if(localStorage.getItem('dichiAiProvider')) aiProviderSelect.value = localStorage.getItem('dichiAiProvider');
+            if(localStorage.getItem('dichiChunkSize')) chunkSizeInput.value = localStorage.getItem('dichiChunkSize');
+            updateApiKeyGuide();
+        }
+        window.addEventListener('load', mainApp);
     </script>
 </body>
 </html>
